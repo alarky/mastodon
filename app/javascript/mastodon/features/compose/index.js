@@ -69,12 +69,14 @@ export default class Compose extends React.PureComponent {
           <div className='drawer__inner'>
             <NavigationContainer />
             <ComposeFormContainer />
+            <div className='drawer__inner__background'></div>
           </div>
 
           <Motion defaultStyle={{ x: -100 }} style={{ x: spring(showSearch ? 0 : -100, { stiffness: 210, damping: 20 }) }}>
             {({ x }) =>
               <div className='drawer__inner darker' style={{ transform: `translateX(${x}%)`, visibility: x === -100 ? 'hidden' : 'visible' }}>
                 <SearchResultsContainer />
+                <div className='drawer__inner__background'></div>
               </div>
             }
           </Motion>
