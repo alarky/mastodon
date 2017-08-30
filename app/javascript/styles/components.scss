@@ -1397,6 +1397,12 @@
   }
 }
 
+.drawer__inner__background {
+  flex: 1 0 auto;
+  background: url('../images/fluffy-elephant-friend.png') no-repeat 50% 100%/contain local;
+  opacity: 0.8;
+}
+
 .pseudo-drawer {
   background: lighten($ui-base-color, 13%);
   font-size: 13px;
