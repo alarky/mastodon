@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 class Api::V1::FollowRequestsController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :follow }
+  before_action -> { doorkeeper_authorize! :follow, :'read:follows' }, only: :index
+  before_action -> { doorkeeper_authorize! :follow, :'write:follows' }, except: :index
   before_action :require_user!
   after_action :insert_pagination_headers, only: :index
 
   def index
     @accounts = load_accounts
+    render json: @accounts, each_serializer: REST::AccountSerializer
   end
 
   def authorize
@@ -70,6 +72,6 @@ class Api::V1::FollowRequestsController < Api::BaseController
   end
 
   def pagination_params(core_params)
-    params.permit(:limit).merge(core_params)
+    params.slice(:limit).permit(:limit).merge(core_params)
   end
 end

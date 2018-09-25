@@ -3,8 +3,8 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import { FormattedMessage } from 'react-intl';
 import AccountContainer from '../../../containers/account_container';
 import StatusContainer from '../../../containers/status_container';
-import Link from 'react-router-dom/Link';
 import ImmutablePureComponent from 'react-immutable-pure-component';
+import Hashtag from '../../../components/hashtag';
 
 export default class SearchResults extends ImmutablePureComponent {
 
@@ -22,6 +22,8 @@ export default class SearchResults extends ImmutablePureComponent {
       count   += results.get('accounts').size;
       accounts = (
         <div className='search-results__section'>
+          <h5><i className='fa fa-fw fa-users' /><FormattedMessage id='search_results.accounts' defaultMessage='People' /></h5>
+
           {results.get('accounts').map(accountId => <AccountContainer key={accountId} id={accountId} />)}
         </div>
       );
@@ -31,6 +33,8 @@ export default class SearchResults extends ImmutablePureComponent {
       count   += results.get('statuses').size;
       statuses = (
         <div className='search-results__section'>
+          <h5><i className='fa fa-fw fa-quote-right' /><FormattedMessage id='search_results.statuses' defaultMessage='Toots' /></h5>
+
           {results.get('statuses').map(statusId => <StatusContainer key={statusId} id={statusId} />)}
         </div>
       );
@@ -40,11 +44,9 @@ export default class SearchResults extends ImmutablePureComponent {
       count += results.get('hashtags').size;
       hashtags = (
         <div className='search-results__section'>
-          {results.get('hashtags').map(hashtag =>
-            <Link key={hashtag} className='search-results__hashtag' to={`/timelines/tag/${hashtag}`}>
-              #{hashtag}
-            </Link>
-          )}
+          <h5><i className='fa fa-fw fa-hashtag' /><FormattedMessage id='search_results.hashtags' defaultMessage='Hashtags' /></h5>
+
+          {results.get('hashtags').map(hashtag => <Hashtag key={hashtag.get('name')} hashtag={hashtag} />)}
         </div>
       );
     }
@@ -52,6 +54,7 @@ export default class SearchResults extends ImmutablePureComponent {
     return (
       <div className='search-results'>
         <div className='search-results__header'>
+          <i className='fa fa-search fa-fw' />
           <FormattedMessage id='search_results.total' defaultMessage='{count, number} {count, plural, one {result} other {results}}' values={{ count }} />
         </div>
 

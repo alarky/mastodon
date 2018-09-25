@@ -1,8 +1,10 @@
 import React from 'react';
-import ReactSwipeable from 'react-swipeable';
+import ReactSwipeableViews from 'react-swipeable-views';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
+import Video from '../../video';
 import ExtendedVideoPlayer from '../../../components/extended_video_player';
+import classNames from 'classnames';
 import { defineMessages, injectIntl } from 'react-intl';
 import IconButton from '../../../components/icon_button';
 import ImmutablePureComponent from 'react-immutable-pure-component';
@@ -10,7 +12,11 @@ import ImageLoader from './image_loader';
 
 const messages = defineMessages({
   close: { id: 'lightbox.close', defaultMessage: 'Close' },
+  previous: { id: 'lightbox.previous', defaultMessage: 'Previous' },
+  next: { id: 'lightbox.next', defaultMessage: 'Next' },
 });
+
+const previewState = 'previewMediaModal';
 
 @injectIntl
 export default class MediaModal extends ImmutablePureComponent {
@@ -22,16 +28,30 @@ export default class MediaModal extends ImmutablePureComponent {
     intl: PropTypes.object.isRequired,
   };
 
+  static contextTypes = {
+    router: PropTypes.object,
+  };
+
   state = {
     index: null,
+    navigationHidden: false,
   };
+
+  handleSwipe = (index) => {
+    this.setState({ index: index % this.props.media.size });
+  }
 
   handleNextClick = () => {
     this.setState({ index: (this.getIndex() + 1) % this.props.media.size });
   }
 
   handlePrevClick = () => {
-    this.setState({ index: (this.getIndex() - 1) % this.props.media.size });
+    this.setState({ index: (this.props.media.size + this.getIndex() - 1) % this.props.media.size });
+  }
+
+  handleChangeIndex = (e) => {
+    const index = Number(e.currentTarget.getAttribute('data-index'));
+    this.setState({ index: index % this.props.media.size });
   }
 
   handleKeyUp = (e) => {
@@ -47,50 +67,148 @@ export default class MediaModal extends ImmutablePureComponent {
 
   componentDidMount () {
     window.addEventListener('keyup', this.handleKeyUp, false);
+    if (this.context.router) {
+      const history = this.context.router.history;
+      history.push(history.location.pathname, previewState);
+      this.unlistenHistory = history.listen(() => {
+        this.props.onClose();
+      });
+    }
   }
 
   componentWillUnmount () {
     window.removeEventListener('keyup', this.handleKeyUp);
+    if (this.context.router) {
+      this.unlistenHistory();
+
+      if (this.context.router.history.location.state === previewState) {
+        this.context.router.history.goBack();
+      }
+    }
   }
 
   getIndex () {
     return this.state.index !== null ? this.state.index : this.props.index;
   }
 
+  toggleNavigation = () => {
+    this.setState(prevState => ({
+      navigationHidden: !prevState.navigationHidden,
+    }));
+  };
+
   render () {
     const { media, intl, onClose } = this.props;
+    const { navigationHidden } = this.state;
 
     const index = this.getIndex();
-    const attachment = media.get(index);
-    const url = attachment.get('url');
+    let pagination = [];
 
-    let leftNav, rightNav, content;
-
-    leftNav = rightNav = content = '';
+    const leftNav  = media.size > 1 && <button tabIndex='0' className='media-modal__nav media-modal__nav--left' onClick={this.handlePrevClick} aria-label={intl.formatMessage(messages.previous)}><i className='fa fa-fw fa-chevron-left' /></button>;
+    const rightNav = media.size > 1 && <button tabIndex='0' className='media-modal__nav  media-modal__nav--right' onClick={this.handleNextClick} aria-label={intl.formatMessage(messages.next)}><i className='fa fa-fw fa-chevron-right' /></button>;
 
     if (media.size > 1) {
-      leftNav  = <div role='button' tabIndex='0' className='modal-container__nav modal-container__nav--left' onClick={this.handlePrevClick}><i className='fa fa-fw fa-chevron-left' /></div>;
-      rightNav = <div role='button' tabIndex='0' className='modal-container__nav  modal-container__nav--right' onClick={this.handleNextClick}><i className='fa fa-fw fa-chevron-right' /></div>;
+      pagination = media.map((item, i) => {
+        const classes = ['media-modal__button'];
+        if (i === index) {
+          classes.push('media-modal__button--active');
+        }
+        return (<li className='media-modal__page-dot' key={i}><button tabIndex='0' className={classes.join(' ')} onClick={this.handleChangeIndex} data-index={i}>{i + 1}</button></li>);
+      });
     }
 
-    if (attachment.get('type') === 'image') {
-      content = <ImageLoader previewSrc={attachment.get('preview_url')} src={url} width={attachment.getIn(['meta', 'original', 'width'])} height={attachment.getIn(['meta', 'original', 'height'])} />;
-    } else if (attachment.get('type') === 'gifv') {
-      content = <ExtendedVideoPlayer src={url} muted controls={false} />;
-    }
+    const content = media.map((image) => {
+      const width  = image.getIn(['meta', 'original', 'width']) || null;
+      const height = image.getIn(['meta', 'original', 'height']) || null;
+
+      if (image.get('type') === 'image') {
+        return (
+          <ImageLoader
+            previewSrc={image.get('preview_url')}
+            src={image.get('url')}
+            width={width}
+            height={height}
+            alt={image.get('description')}
+            key={image.get('url')}
+            onClick={this.toggleNavigation}
+          />
+        );
+      } else if (image.get('type') === 'video') {
+        const { time } = this.props;
+
+        return (
+          <Video
+            preview={image.get('preview_url')}
+            src={image.get('url')}
+            width={image.get('width')}
+            height={image.get('height')}
+            startTime={time || 0}
+            onCloseVideo={onClose}
+            detailed
+            description={image.get('description')}
+            key={image.get('url')}
+          />
+        );
+      } else if (image.get('type') === 'gifv') {
+        return (
+          <ExtendedVideoPlayer
+            src={image.get('url')}
+            muted
+            controls={false}
+            width={width}
+            height={height}
+            key={image.get('preview_url')}
+            alt={image.get('description')}
+            onClick={this.toggleNavigation}
+          />
+        );
+      }
+
+      return null;
+    }).toArray();
+
+    // you can't use 100vh, because the viewport height is taller
+    // than the visible part of the document in some mobile
+    // browsers when it's address bar is visible.
+    // https://developers.google.com/web/updates/2016/12/url-bar-resizing
+    const swipeableViewsStyle = {
+      width: '100%',
+      height: '100%',
+    };
+
+    const containerStyle = {
+      alignItems: 'center', // center vertically
+    };
+
+    const navigationClassName = classNames('media-modal__navigation', {
+      'media-modal__navigation--hidden': navigationHidden,
+    });
 
     return (
       <div className='modal-root__modal media-modal'>
-        {leftNav}
-
-        <div className='media-modal__content'>
-          <IconButton className='media-modal__close' title={intl.formatMessage(messages.close)} icon='times' onClick={onClose} size={16} />
-          <ReactSwipeable onSwipedRight={this.handlePrevClick} onSwipedLeft={this.handleNextClick}>
+        <div
+          className='media-modal__closer'
+          role='presentation'
+          onClick={onClose}
+        >
+          <ReactSwipeableViews
+            style={swipeableViewsStyle}
+            containerStyle={containerStyle}
+            onChangeIndex={this.handleSwipe}
+            onSwitching={this.handleSwitching}
+            index={index}
+          >
             {content}
-          </ReactSwipeable>
+          </ReactSwipeableViews>
         </div>
-
-        {rightNav}
+        <div className={navigationClassName}>
+          <IconButton className='media-modal__close' title={intl.formatMessage(messages.close)} icon='times' onClick={onClose} size={40} />
+          {leftNav}
+          {rightNav}
+          <ul className='media-modal__pagination'>
+            {pagination}
+          </ul>
+        </div>
       </div>
     );
   }

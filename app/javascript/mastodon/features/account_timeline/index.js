@@ -3,21 +3,25 @@ import { connect } from 'react-redux';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
 import { fetchAccount } from '../../actions/accounts';
-import { refreshAccountTimeline, expandAccountTimeline } from '../../actions/timelines';
+import { expandAccountFeaturedTimeline, expandAccountTimeline } from '../../actions/timelines';
 import StatusList from '../../components/status_list';
 import LoadingIndicator from '../../components/loading_indicator';
 import Column from '../ui/components/column';
 import HeaderContainer from './containers/header_container';
 import ColumnBackButton from '../../components/column_back_button';
-import Immutable from 'immutable';
+import { List as ImmutableList } from 'immutable';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 
-const mapStateToProps = (state, props) => ({
-  statusIds: state.getIn(['timelines', `account:${Number(props.params.accountId)}`, 'items'], Immutable.List()),
-  isLoading: state.getIn(['timelines', `account:${Number(props.params.accountId)}`, 'isLoading']),
-  hasMore: !!state.getIn(['timelines', `account:${Number(props.params.accountId)}`, 'next']),
-  me: state.getIn(['meta', 'me']),
-});
+const mapStateToProps = (state, { params: { accountId }, withReplies = false }) => {
+  const path = withReplies ? `${accountId}:with_replies` : accountId;
+
+  return {
+    statusIds: state.getIn(['timelines', `account:${path}`, 'items'], ImmutableList()),
+    featuredStatusIds: withReplies ? ImmutableList() : state.getIn(['timelines', `account:${accountId}:pinned`, 'items'], ImmutableList()),
+    isLoading: state.getIn(['timelines', `account:${path}`, 'isLoading']),
+    hasMore:   state.getIn(['timelines', `account:${path}`, 'hasMore']),
+  };
+};
 
 @connect(mapStateToProps)
 export default class AccountTimeline extends ImmutablePureComponent {
@@ -26,31 +30,38 @@ export default class AccountTimeline extends ImmutablePureComponent {
     params: PropTypes.object.isRequired,
     dispatch: PropTypes.func.isRequired,
     statusIds: ImmutablePropTypes.list,
+    featuredStatusIds: ImmutablePropTypes.list,
     isLoading: PropTypes.bool,
     hasMore: PropTypes.bool,
-    me: PropTypes.number.isRequired,
+    withReplies: PropTypes.bool,
   };
 
   componentWillMount () {
-    this.props.dispatch(fetchAccount(Number(this.props.params.accountId)));
-    this.props.dispatch(refreshAccountTimeline(Number(this.props.params.accountId)));
+    const { params: { accountId }, withReplies } = this.props;
+
+    this.props.dispatch(fetchAccount(accountId));
+    if (!withReplies) {
+      this.props.dispatch(expandAccountFeaturedTimeline(accountId));
+    }
+    this.props.dispatch(expandAccountTimeline(accountId, { withReplies }));
   }
 
   componentWillReceiveProps (nextProps) {
-    if (nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) {
-      this.props.dispatch(fetchAccount(Number(nextProps.params.accountId)));
-      this.props.dispatch(refreshAccountTimeline(Number(nextProps.params.accountId)));
+    if ((nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) || nextProps.withReplies !== this.props.withReplies) {
+      this.props.dispatch(fetchAccount(nextProps.params.accountId));
+      if (!nextProps.withReplies) {
+        this.props.dispatch(expandAccountFeaturedTimeline(nextProps.params.accountId));
+      }
+      this.props.dispatch(expandAccountTimeline(nextProps.params.accountId, { withReplies: nextProps.params.withReplies }));
     }
   }
 
-  handleScrollToBottom = () => {
-    if (!this.props.isLoading && this.props.hasMore) {
-      this.props.dispatch(expandAccountTimeline(Number(this.props.params.accountId)));
-    }
+  handleLoadMore = maxId => {
+    this.props.dispatch(expandAccountTimeline(this.props.params.accountId, { maxId, withReplies: this.props.withReplies }));
   }
 
   render () {
-    const { statusIds, isLoading, hasMore, me } = this.props;
+    const { statusIds, featuredStatusIds, isLoading, hasMore } = this.props;
 
     if (!statusIds && isLoading) {
       return (
@@ -68,10 +79,10 @@ export default class AccountTimeline extends ImmutablePureComponent {
           prepend={<HeaderContainer accountId={this.props.params.accountId} />}
           scrollKey='account_timeline'
           statusIds={statusIds}
+          featuredStatusIds={featuredStatusIds}
           isLoading={isLoading}
           hasMore={hasMore}
-          me={me}
-          onScrollToBottom={this.handleScrollToBottom}
+          onLoadMore={this.handleLoadMore}
         />
       </Column>
     );

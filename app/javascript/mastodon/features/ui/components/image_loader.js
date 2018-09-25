@@ -1,19 +1,23 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
+import ZoomableImage from './zoomable_image';
 
 export default class ImageLoader extends React.PureComponent {
 
   static propTypes = {
     alt: PropTypes.string,
     src: PropTypes.string.isRequired,
-    previewSrc: PropTypes.string.isRequired,
-    width: PropTypes.number.isRequired,
-    height: PropTypes.number.isRequired,
+    previewSrc: PropTypes.string,
+    width: PropTypes.number,
+    height: PropTypes.number,
+    onClick: PropTypes.func,
   }
 
   static defaultProps = {
     alt: '',
+    width: null,
+    height: null,
   };
 
   state = {
@@ -22,6 +26,7 @@ export default class ImageLoader extends React.PureComponent {
   }
 
   removers = [];
+  canvas = null;
 
   get canvasContext() {
     if (!this.canvas) {
@@ -41,13 +46,17 @@ export default class ImageLoader extends React.PureComponent {
     }
   }
 
+  componentWillUnmount () {
+    this.removeEventListeners();
+  }
+
   loadImage (props) {
     this.removeEventListeners();
     this.setState({ loading: true, error: false });
     Promise.all([
-      this.loadPreviewCanvas(props),
-      this.loadOriginalImage(props),
-    ])
+      props.previewSrc && this.loadPreviewCanvas(props),
+      this.hasSize() && this.loadOriginalImage(props),
+    ].filter(Boolean))
       .then(() => {
         this.setState({ loading: false, error: false });
         this.clearPreviewCanvas();
@@ -106,34 +115,38 @@ export default class ImageLoader extends React.PureComponent {
     this.removers = [];
   }
 
+  hasSize () {
+    const { width, height } = this.props;
+    return typeof width === 'number' && typeof height === 'number';
+  }
+
   setCanvasRef = c => {
     this.canvas = c;
   }
 
   render () {
-    const { alt, src, width, height } = this.props;
+    const { alt, src, width, height, onClick } = this.props;
     const { loading } = this.state;
 
     const className = classNames('image-loader', {
       'image-loader--loading': loading,
+      'image-loader--amorphous': !this.hasSize(),
     });
 
     return (
       <div className={className}>
-        <canvas
-          className='image-loader__preview-canvas'
-          width={width}
-          height={height}
-          ref={this.setCanvasRef}
-        />
-
-        {!loading && (
-          <img
-            alt={alt}
-            className='image-loader__img'
-            src={src}
+        {loading ? (
+          <canvas
+            className='image-loader__preview-canvas'
+            ref={this.setCanvasRef}
             width={width}
             height={height}
+          />
+        ) : (
+          <ZoomableImage
+            alt={alt}
+            src={src}
+            onClick={onClick}
           />
         )}
       </div>

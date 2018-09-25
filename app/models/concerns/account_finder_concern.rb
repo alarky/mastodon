@@ -30,7 +30,7 @@ module AccountFinderConcern
     end
 
     def account
-      scoped_accounts.take
+      scoped_accounts.order(id: :asc).take
     end
 
     private
@@ -44,7 +44,7 @@ module AccountFinderConcern
     end
 
     def with_usernames
-      Account.where.not(username: [nil, ''])
+      Account.where.not(username: '')
     end
 
     def matching_username

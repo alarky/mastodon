@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::NotificationsController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :read }
+  before_action -> { doorkeeper_authorize! :read, :'read:notifications' }, except: [:clear, :dismiss]
+  before_action -> { doorkeeper_authorize! :write, :'write:notifications' }, only: [:clear, :dismiss]
   before_action :require_user!
   after_action :insert_pagination_headers, only: :index
 
@@ -11,11 +12,12 @@ class Api::V1::NotificationsController < Api::BaseController
 
   def index
     @notifications = load_notifications
-    set_maps_for_notification_target_statuses
+    render json: @notifications, each_serializer: REST::NotificationSerializer, relationships: StatusRelationshipsPresenter.new(target_statuses_from_notifications, current_user&.account_id)
   end
 
   def show
     @notification = current_account.notifications.find(params[:id])
+    render json: @notification, serializer: REST::NotificationSerializer
   end
 
   def clear
@@ -44,10 +46,6 @@ class Api::V1::NotificationsController < Api::BaseController
 
   def browserable_account_notifications
     current_account.notifications.browserable(exclude_types)
-  end
-
-  def set_maps_for_notification_target_statuses
-    set_maps target_statuses_from_notifications
   end
 
   def target_statuses_from_notifications
@@ -85,6 +83,6 @@ class Api::V1::NotificationsController < Api::BaseController
   end
 
   def pagination_params(core_params)
-    params.permit(:limit, exclude_types: []).merge(core_params)
+    params.slice(:limit, :exclude_types).permit(:limit, exclude_types: []).merge(core_params)
   end
 end

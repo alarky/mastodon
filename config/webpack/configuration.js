@@ -9,6 +9,9 @@ const configPath = resolve('config', 'webpacker.yml');
 const loadersDir = join(__dirname, 'loaders');
 const settings = safeLoad(readFileSync(configPath), 'utf8')[env.NODE_ENV];
 
+const themePath = resolve('config', 'themes.yml');
+const themes = safeLoad(readFileSync(themePath), 'utf8');
+
 function removeOuterSlashes(string) {
   return string.replace(/^\/*/, '').replace(/\/*$/, '');
 }
@@ -24,12 +27,16 @@ function formatPublicPath(host = '', path = '') {
 
 const output = {
   path: resolve('public', settings.public_output_path),
-  publicPath: formatPublicPath(env.ASSET_HOST, settings.public_output_path),
+  publicPath: formatPublicPath(env.CDN_HOST, settings.public_output_path),
 };
 
 module.exports = {
   settings,
-  env,
+  themes,
+  env: {
+    CDN_HOST: env.CDN_HOST,
+    NODE_ENV: env.NODE_ENV,
+  },
   loadersDir,
   output,
 };

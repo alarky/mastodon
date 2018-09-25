@@ -8,7 +8,7 @@ import ColumnHeader from '../../components/column_header';
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ColumnSettingsContainer from './containers/column_settings_container';
-import Link from 'react-router-dom/Link';
+import { Link } from 'react-router-dom';
 
 const messages = defineMessages({
   title: { id: 'column.home', defaultMessage: 'Home' },
@@ -16,7 +16,7 @@ const messages = defineMessages({
 
 const mapStateToProps = state => ({
   hasUnread: state.getIn(['timelines', 'home', 'unread']) > 0,
-  hasFollows: state.getIn(['accounts_counters', state.getIn(['meta', 'me']), 'following_count']) > 0,
+  isPartial: state.getIn(['timelines', 'home', 'items', 0], null) === null,
 });
 
 @connect(mapStateToProps)
@@ -27,7 +27,7 @@ export default class HomeTimeline extends React.PureComponent {
     dispatch: PropTypes.func.isRequired,
     intl: PropTypes.object.isRequired,
     hasUnread: PropTypes.bool,
-    hasFollows: PropTypes.bool,
+    isPartial: PropTypes.bool,
     columnId: PropTypes.string,
     multiColumn: PropTypes.bool,
   };
@@ -55,21 +55,46 @@ export default class HomeTimeline extends React.PureComponent {
     this.column = c;
   }
 
-  handleLoadMore = () => {
-    this.props.dispatch(expandHomeTimeline());
+  handleLoadMore = maxId => {
+    this.props.dispatch(expandHomeTimeline({ maxId }));
+  }
+
+  componentDidMount () {
+    this._checkIfReloadNeeded(false, this.props.isPartial);
+  }
+
+  componentDidUpdate (prevProps) {
+    this._checkIfReloadNeeded(prevProps.isPartial, this.props.isPartial);
+  }
+
+  componentWillUnmount () {
+    this._stopPolling();
+  }
+
+  _checkIfReloadNeeded (wasPartial, isPartial) {
+    const { dispatch } = this.props;
+
+    if (wasPartial === isPartial) {
+      return;
+    } else if (!wasPartial && isPartial) {
+      this.polling = setInterval(() => {
+        dispatch(expandHomeTimeline());
+      }, 3000);
+    } else if (wasPartial && !isPartial) {
+      this._stopPolling();
+    }
+  }
+
+  _stopPolling () {
+    if (this.polling) {
+      clearInterval(this.polling);
+      this.polling = null;
+    }
   }
 
   render () {
-    const { intl, hasUnread, hasFollows, columnId, multiColumn } = this.props;
+    const { intl, hasUnread, columnId, multiColumn } = this.props;
     const pinned = !!columnId;
-
-    let emptyMessage;
-
-    if (hasFollows) {
-      emptyMessage = <FormattedMessage id='empty_column.home.inactivity' defaultMessage='Your home feed is empty. If you have been inactive for a while, it will be regenerated for you soon.' />;
-    } else {
-      emptyMessage = <FormattedMessage id='empty_column.home' defaultMessage="You aren't following anyone yet. Visit {public} or use search to get started and meet other users." values={{ public: <Link to='/timelines/public'><FormattedMessage id='empty_column.home.public_timeline' defaultMessage='the public timeline' /></Link> }} />;
-    }
 
     return (
       <Column ref={this.setRef}>
@@ -89,9 +114,9 @@ export default class HomeTimeline extends React.PureComponent {
         <StatusListContainer
           trackScroll={!pinned}
           scrollKey={`home_timeline-${columnId}`}
-          loadMore={this.handleLoadMore}
+          onLoadMore={this.handleLoadMore}
           timelineId='home'
-          emptyMessage={emptyMessage}
+          emptyMessage={<FormattedMessage id='empty_column.home' defaultMessage='Your home timeline is empty! Visit {public} or use search to get started and meet other users.' values={{ public: <Link to='/timelines/public'><FormattedMessage id='empty_column.home.public_timeline' defaultMessage='the public timeline' /></Link> }} />}
         />
       </Column>
     );

@@ -13,7 +13,7 @@ class PostStatusService < BaseService
   # @option [Doorkeeper::Application] :application
   # @option [String] :idempotency Optional idempotency key
   # @return [Status]
-  def call(account, text, in_reply_to = nil, options = {})
+  def call(account, text, in_reply_to = nil, **options)
     if options[:idempotency].present?
       existing_id = redis.get("idempotency:status:#{account.id}:#{options[:idempotency]}")
       return Status.find(existing_id) if existing_id
@@ -21,26 +21,33 @@ class PostStatusService < BaseService
 
     media  = validate_media!(options[:media_ids])
     status = nil
+    text   = options.delete(:spoiler_text) if text.blank? && options[:spoiler_text].present?
+
     ApplicationRecord.transaction do
       status = account.statuses.create!(text: text,
+                                        media_attachments: media || [],
                                         thread: in_reply_to,
-                                        sensitive: options[:sensitive],
+                                        sensitive: (options[:sensitive].nil? ? account.user&.setting_default_sensitive : options[:sensitive]) || options[:spoiler_text].present?,
                                         spoiler_text: options[:spoiler_text] || '',
-                                        visibility: options[:visibility],
-                                        language: detect_language_for(text, account),
+                                        visibility: options[:visibility] || account.user&.setting_default_privacy,
+                                        language: language_from_option(options[:language]) || account.user&.setting_default_language&.presence || LanguageDetector.instance.detect(text, account),
                                         application: options[:application])
-      attach_media(status, media)
     end
-    process_mentions_service.call(status)
+
     process_hashtags_service.call(status)
+    process_mentions_service.call(status)
 
     LinkCrawlWorker.perform_async(status.id) unless status.spoiler_text?
     DistributionWorker.perform_async(status.id)
     Pubsubhubbub::DistributionWorker.perform_async(status.stream_entry.id)
+    ActivityPub::DistributionWorker.perform_async(status.id)
+    ActivityPub::ReplyDistributionWorker.perform_async(status.id) if status.reply? && status.thread.account.local?
 
     if options[:idempotency].present?
       redis.setex("idempotency:status:#{account.id}:#{options[:idempotency]}", 3_600, status.id)
     end
+
+    bump_potential_friendship(account, status)
 
     status
   end
@@ -59,24 +66,24 @@ class PostStatusService < BaseService
     media
   end
 
-  def attach_media(status, media)
-    return if media.nil?
-    media.update(status_id: status.id)
-  end
-
-  def detect_language_for(text, account)
-    LanguageDetector.new(text, account).to_iso_s
+  def language_from_option(str)
+    ISO_639.find(str)&.alpha2
   end
 
   def process_mentions_service
-    @process_mentions_service ||= ProcessMentionsService.new
+    ProcessMentionsService.new
   end
 
   def process_hashtags_service
-    @process_hashtags_service ||= ProcessHashtagsService.new
+    ProcessHashtagsService.new
   end
 
   def redis
     Redis.current
+  end
+
+  def bump_potential_friendship(account, status)
+    return if !status.reply? || account.following?(status.in_reply_to_account_id)
+    PotentialFriendshipTracker.record(account.id, status.in_reply_to_account_id, :reply)
   end
 end

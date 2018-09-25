@@ -3,7 +3,7 @@
 class Api::V1::Statuses::RebloggedByAccountsController < Api::BaseController
   include Authorization
 
-  before_action :authorize_if_got_token
+  before_action -> { authorize_if_got_token! :read, :'read:accounts' }
   before_action :set_status
   after_action :insert_pagination_headers
 
@@ -11,7 +11,7 @@ class Api::V1::Statuses::RebloggedByAccountsController < Api::BaseController
 
   def index
     @accounts = load_accounts
-    render 'api/v1/statuses/accounts'
+    render json: @accounts, each_serializer: REST::AccountSerializer
   end
 
   private
@@ -68,12 +68,7 @@ class Api::V1::Statuses::RebloggedByAccountsController < Api::BaseController
     raise ActiveRecord::RecordNotFound
   end
 
-  def authorize_if_got_token
-    request_token = Doorkeeper::OAuth::Token.from_request(request, *Doorkeeper.configuration.access_token_methods)
-    doorkeeper_authorize! :read if request_token
-  end
-
   def pagination_params(core_params)
-    params.permit(:limit).merge(core_params)
+    params.slice(:limit).permit(:limit).merge(core_params)
   end
 end

@@ -15,6 +15,10 @@ Rails.application.configure do
   config.action_controller.perform_caching = true
   config.action_controller.asset_host      = ENV['CDN_HOST'] if ENV.key?('CDN_HOST')
 
+  # Ensures that a master key has been made available in either ENV["RAILS_MASTER_KEY"]
+  # or in config/master.key. This key is used to decrypt credentials (and other encrypted files).
+  # config.require_master_key = true
+
   # Disable serving static files from the `/public` folder by default since
   # Apache or NGINX already handles this.
   config.public_file_server.enabled = ENV['RAILS_SERVE_STATIC_FILES'].present?
@@ -25,7 +29,7 @@ Rails.application.configure do
   end
 
   # Compress JavaScripts and CSS.
-  config.assets.js_compressor = Uglifier.new(mangle: false)
+  # config.assets.js_compressor = Uglifier.new(mangle: false)
   # config.assets.css_compressor = :sass
 
   # Do not fallback to assets pipeline if a precompiled asset is missed.
@@ -48,15 +52,15 @@ Rails.application.configure do
   config.log_tags = [:request_id]
 
   # Use a different cache store in production.
-  config.cache_store = :redis_store, ENV['REDIS_URL'], REDIS_CACHE_PARAMS
+  config.cache_store = :redis_store, ENV['CACHE_REDIS_URL'], REDIS_CACHE_PARAMS
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
-  # the I18n.default_locale when a translation cannot be found).
-  config.i18n.fallbacks = true
+  # English when a translation cannot be found).
+  config.i18n.fallbacks = [:en]
 
   # Send deprecation notices to registered listeners.
   config.active_support.deprecation = :notify
@@ -73,6 +77,8 @@ Rails.application.configure do
   config.action_mailer.perform_caching = false
 
   # E-mails
+  config.action_mailer.default_options = { from: ENV.fetch('SMTP_FROM_ADDRESS', 'notifications@localhost') }
+
   config.action_mailer.smtp_settings = {
     :port                 => ENV['SMTP_PORT'],
     :address              => ENV['SMTP_SERVER'],
@@ -83,14 +89,10 @@ Rails.application.configure do
     :ca_file              => ENV['SMTP_CA_FILE'].presence,
     :openssl_verify_mode  => ENV['SMTP_OPENSSL_VERIFY_MODE'],
     :enable_starttls_auto => ENV['SMTP_ENABLE_STARTTLS_AUTO'] || true,
+    :tls                  => ENV['SMTP_TLS'].presence,
   }
 
   config.action_mailer.delivery_method = ENV.fetch('SMTP_DELIVERY_METHOD', 'smtp').to_sym
-
-  config.to_prepare do
-    StatsD.backend = StatsD::Instrument::Backends::NullBackend.new if ENV['STATSD_ADDR'].blank?
-    Sidekiq::Logging.logger.level = Logger::WARN
-  end
 
   config.action_dispatch.default_headers = {
     'Server'                 => 'Mastodon',
@@ -98,4 +100,6 @@ Rails.application.configure do
     'X-Content-Type-Options' => 'nosniff',
     'X-XSS-Protection'       => '1; mode=block',
   }
+
+  config.x.otp_secret = ENV.fetch('OTP_SECRET')
 end

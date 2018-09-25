@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
 class Api::SalmonController < Api::BaseController
+  include SignatureVerification
+
   before_action :set_account
   respond_to :txt
 
   def update
     if verify_payload?
       process_salmon
-      head 201
-    else
       head 202
+    elsif payload.present?
+      render plain: signature_verification_failure_reason, status: 401
+    else
+      head 400
     end
   end
 

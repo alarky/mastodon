@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::StatusesController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :read }
+  before_action -> { doorkeeper_authorize! :read, :'read:statuses' }
   before_action :set_account
   after_action :insert_pagination_headers
 
@@ -9,6 +9,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
 
   def index
     @statuses = load_statuses
+    render json: @statuses, each_serializer: REST::StatusSerializer, relationships: StatusRelationshipsPresenter.new(@statuses, current_user&.account_id)
   end
 
   private
@@ -18,9 +19,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def load_statuses
-    cached_account_statuses.tap do |statuses|
-      set_maps(statuses)
-    end
+    cached_account_statuses
   end
 
   def cached_account_statuses
@@ -28,18 +27,17 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def account_statuses
-    default_statuses.tap do |statuses|
-      statuses.merge!(only_media_scope) if params[:only_media]
-      statuses.merge!(no_replies_scope) if params[:exclude_replies]
-    end
-  end
-
-  def default_statuses
-    permitted_account_statuses.paginate_by_max_id(
+    statuses = truthy_param?(:pinned) ? pinned_scope : permitted_account_statuses
+    statuses = statuses.paginate_by_max_id(
       limit_param(DEFAULT_STATUSES_LIMIT),
       params[:max_id],
       params[:since_id]
     )
+
+    statuses.merge!(only_media_scope) if truthy_param?(:only_media)
+    statuses.merge!(no_replies_scope) if truthy_param?(:exclude_replies)
+
+    statuses
   end
 
   def permitted_account_statuses
@@ -51,7 +49,17 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def account_media_status_ids
-    @account.media_attachments.attached.reorder(nil).select(:status_id).distinct
+    # `SELECT DISTINCT id, updated_at` is too slow, so pluck ids at first, and then select id, updated_at with ids.
+    # Also, Avoid getting slow by not narrowing down by `statuses.account_id`.
+    # When narrowing down by `statuses.account_id`, `index_statuses_20180106` will be used
+    # and the table will be joined by `Merge Semi Join`, so the query will be slow.
+    Status.joins(:media_attachments).merge(@account.media_attachments).permitted_for(@account, current_account)
+          .paginate_by_max_id(limit_param(DEFAULT_STATUSES_LIMIT), params[:max_id], params[:since_id])
+          .reorder(id: :desc).distinct(:id).pluck(:id)
+  end
+
+  def pinned_scope
+    @account.pinned_statuses
   end
 
   def no_replies_scope
@@ -59,7 +67,7 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
   end
 
   def pagination_params(core_params)
-    params.permit(:limit, :only_media, :exclude_replies).merge(core_params)
+    params.slice(:limit, :only_media, :exclude_replies).permit(:limit, :only_media, :exclude_replies).merge(core_params)
   end
 
   def insert_pagination_headers

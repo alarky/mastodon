@@ -21,7 +21,7 @@ RSpec.describe StreamEntriesController, type: :controller do
 
         get route, params: { account_username: alice.username, id: status.stream_entry.id }
 
-        expect(response.headers['Link'].to_s).to eq "<http://test.host/users/alice/updates/#{status.stream_entry.id}.atom>; rel=\"alternate\"; type=\"application/atom+xml\""
+        expect(response.headers['Link'].to_s).to eq "<http://test.host/users/alice/updates/#{status.stream_entry.id}.atom>; rel=\"alternate\"; type=\"application/atom+xml\", <https://cb6e6126.ngrok.io/users/alice/statuses/#{status.id}>; rel=\"alternate\"; type=\"application/activity+json\""
       end
     end
 
@@ -66,36 +66,30 @@ RSpec.describe StreamEntriesController, type: :controller do
   describe 'GET #show' do
     include_examples 'before_action', :show
 
-    it 'renders with HTML' do
-      ancestor = Fabricate(:status)
-      status = Fabricate(:status, in_reply_to_id: ancestor.id)
-      descendant = Fabricate(:status, in_reply_to_id: status.id)
+    it 'redirects to status page' do
+      status = Fabricate(:status)
 
       get :show, params: { account_username: status.account.username, id: status.stream_entry.id }
 
-      expect(assigns(:ancestors)).to eq [ancestor]
-      expect(assigns(:descendants)).to eq [descendant]
-      expect(response).to have_http_status(:success)
+      expect(response).to redirect_to(short_account_status_url(status.account, status))
     end
 
     it 'returns http success with Atom' do
       status = Fabricate(:status)
       get :show, params: { account_username: status.account.username, id: status.stream_entry.id }, format: 'atom'
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(200)
     end
   end
 
   describe 'GET #embed' do
     include_examples 'before_action', :embed
 
-    it 'returns embedded view of status' do
+    it 'redirects to new embed page' do
       status = Fabricate(:status)
 
       get :embed, params: { account_username: status.account.username, id: status.stream_entry.id }
 
-      expect(response).to have_http_status(:success)
-      expect(response.headers['X-Frame-Options']).to eq 'ALLOWALL'
-      expect(response).to render_template(layout: 'embedded')
+      expect(response).to redirect_to(embed_short_account_status_url(status.account, status))
     end
   end
 end

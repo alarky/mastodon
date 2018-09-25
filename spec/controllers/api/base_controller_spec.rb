@@ -23,7 +23,7 @@ describe Api::BaseController do
     it 'does not protect from forgery' do
       ActionController::Base.allow_forgery_protection = true
       post 'success'
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(200)
     end
   end
 
@@ -32,7 +32,7 @@ describe Api::BaseController do
       ActiveRecord::RecordInvalid => 422,
       Mastodon::ValidationError => 422,
       ActiveRecord::RecordNotFound => 404,
-      Goldfinger::Error => 422,
+      Mastodon::UnexpectedResponseError => 503,
       HTTP::Error => 503,
       OpenSSL::SSL::SSLError => 503,
       Mastodon::NotPermittedError => 403,

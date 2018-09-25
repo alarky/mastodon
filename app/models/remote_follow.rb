@@ -7,8 +7,8 @@ class RemoteFollow
 
   validates :acct, presence: true
 
-  def initialize(attrs = {})
-    @acct = attrs[:acct].gsub(/\A@/, '').strip unless attrs[:acct].nil?
+  def initialize(attrs = nil)
+    @acct = attrs[:acct].gsub(/\A@/, '').strip if !attrs.nil? && !attrs[:acct].nil?
   end
 
   def valid?
@@ -42,7 +42,7 @@ class RemoteFollow
 
   def acct_resource
     @_acct_resource ||= Goldfinger.finger("acct:#{acct}")
-  rescue Goldfinger::Error
+  rescue Goldfinger::Error, HTTP::ConnectionError
     nil
   end
 

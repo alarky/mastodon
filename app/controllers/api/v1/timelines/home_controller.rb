@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Timelines::HomeController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :read }, only: [:show]
+  before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:show]
   before_action :require_user!, only: [:show]
   after_action :insert_pagination_headers, unless: -> { @statuses.empty? }
 
@@ -9,15 +9,17 @@ class Api::V1::Timelines::HomeController < Api::BaseController
 
   def show
     @statuses = load_statuses
-    render 'api/v1/timelines/show'
+
+    render json: @statuses,
+           each_serializer: REST::StatusSerializer,
+           relationships: StatusRelationshipsPresenter.new(@statuses, current_user&.account_id),
+           status: regeneration_in_progress? ? 206 : 200
   end
 
   private
 
   def load_statuses
-    cached_home_statuses.tap do |statuses|
-      set_maps(statuses)
-    end
+    cached_home_statuses
   end
 
   def cached_home_statuses
@@ -33,7 +35,7 @@ class Api::V1::Timelines::HomeController < Api::BaseController
   end
 
   def account_home_feed
-    Feed.new(:home, current_account)
+    HomeFeed.new(current_account)
   end
 
   def insert_pagination_headers
@@ -41,7 +43,7 @@ class Api::V1::Timelines::HomeController < Api::BaseController
   end
 
   def pagination_params(core_params)
-    params.permit(:local, :limit).merge(core_params)
+    params.slice(:local, :limit).permit(:local, :limit).merge(core_params)
   end
 
   def next_path
@@ -58,5 +60,9 @@ class Api::V1::Timelines::HomeController < Api::BaseController
 
   def pagination_since_id
     @statuses.first.id
+  end
+
+  def regeneration_in_progress?
+    Redis.current.exists("account:#{current_account.id}:regeneration")
   end
 end

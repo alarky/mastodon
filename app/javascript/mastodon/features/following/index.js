@@ -8,7 +8,7 @@ import {
   fetchFollowing,
   expandFollowing,
 } from '../../actions/accounts';
-import { ScrollContainer } from 'react-router-scroll';
+import { ScrollContainer } from 'react-router-scroll-4';
 import AccountContainer from '../../containers/account_container';
 import Column from '../ui/components/column';
 import HeaderContainer from '../account_timeline/containers/header_container';
@@ -17,8 +17,8 @@ import ColumnBackButton from '../../components/column_back_button';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 
 const mapStateToProps = (state, props) => ({
-  accountIds: state.getIn(['user_lists', 'following', Number(props.params.accountId), 'items']),
-  hasMore: !!state.getIn(['user_lists', 'following', Number(props.params.accountId), 'next']),
+  accountIds: state.getIn(['user_lists', 'following', props.params.accountId, 'items']),
+  hasMore: !!state.getIn(['user_lists', 'following', props.params.accountId, 'next']),
 });
 
 @connect(mapStateToProps)
@@ -32,14 +32,14 @@ export default class Following extends ImmutablePureComponent {
   };
 
   componentWillMount () {
-    this.props.dispatch(fetchAccount(Number(this.props.params.accountId)));
-    this.props.dispatch(fetchFollowing(Number(this.props.params.accountId)));
+    this.props.dispatch(fetchAccount(this.props.params.accountId));
+    this.props.dispatch(fetchFollowing(this.props.params.accountId));
   }
 
   componentWillReceiveProps (nextProps) {
     if (nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) {
-      this.props.dispatch(fetchAccount(Number(nextProps.params.accountId)));
-      this.props.dispatch(fetchFollowing(Number(nextProps.params.accountId)));
+      this.props.dispatch(fetchAccount(nextProps.params.accountId));
+      this.props.dispatch(fetchFollowing(nextProps.params.accountId));
     }
   }
 
@@ -47,13 +47,13 @@ export default class Following extends ImmutablePureComponent {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
 
     if (scrollTop === scrollHeight - clientHeight && this.props.hasMore) {
-      this.props.dispatch(expandFollowing(Number(this.props.params.accountId)));
+      this.props.dispatch(expandFollowing(this.props.params.accountId));
     }
   }
 
   handleLoadMore = (e) => {
     e.preventDefault();
-    this.props.dispatch(expandFollowing(Number(this.props.params.accountId)));
+    this.props.dispatch(expandFollowing(this.props.params.accountId));
   }
 
   render () {
@@ -80,7 +80,7 @@ export default class Following extends ImmutablePureComponent {
         <ScrollContainer scrollKey='following'>
           <div className='scrollable' onScroll={this.handleScroll}>
             <div className='following'>
-              <HeaderContainer accountId={this.props.params.accountId} />
+              <HeaderContainer accountId={this.props.params.accountId} hideTabs />
               {accountIds.map(id => <AccountContainer key={id} id={id} withNote={false} />)}
               {loadMore}
             </div>

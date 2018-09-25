@@ -33,13 +33,13 @@ describe ApplicationController, type: :controller do
     it 'sets link headers' do
       account = Fabricate(:account, username: 'username')
       get 'success', params: { account_username: 'username' }
-      expect(response.headers['Link'].to_s).to eq '<http://test.host/.well-known/webfinger?resource=acct%3Ausername%40cb6e6126.ngrok.io>; rel="lrdd"; type="application/xrd+xml", <http://test.host/users/username.atom>; rel="alternate"; type="application/atom+xml"'
+      expect(response.headers['Link'].to_s).to eq '<http://test.host/.well-known/webfinger?resource=acct%3Ausername%40cb6e6126.ngrok.io>; rel="lrdd"; type="application/xrd+xml", <http://test.host/users/username.atom>; rel="alternate"; type="application/atom+xml", <https://cb6e6126.ngrok.io/users/username>; rel="alternate"; type="application/activity+json"'
     end
 
     it 'returns http success' do
       account = Fabricate(:account)
       get 'success', params: { account_username: account.username }
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(200)
     end
   end
 end

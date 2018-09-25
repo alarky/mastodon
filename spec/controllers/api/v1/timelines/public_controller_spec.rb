@@ -12,7 +12,7 @@ describe Api::V1::Timelines::PublicController do
   end
 
   context 'with a user context' do
-    let(:token) { double acceptable?: true, resource_owner_id: user.id }
+    let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id) }
 
     describe 'GET #show' do
       before do
@@ -22,7 +22,7 @@ describe Api::V1::Timelines::PublicController do
       it 'returns http success' do
         get :show
 
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
         expect(response.headers['Link'].links.size).to eq(2)
       end
     end
@@ -35,20 +35,20 @@ describe Api::V1::Timelines::PublicController do
       it 'returns http success' do
         get :show, params: { local: true }
 
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
         expect(response.headers['Link'].links.size).to eq(2)
       end
     end
   end
 
   context 'without a user context' do
-    let(:token) { double acceptable?: true, resource_owner_id: nil }
+    let(:token) { Fabricate(:accessible_access_token, resource_owner_id: nil) }
 
     describe 'GET #show' do
       it 'returns http success' do
         get :show
 
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
         expect(response.headers['Link']).to be_nil
       end
     end
