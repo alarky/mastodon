@@ -1,0 +1,13 @@
+@import 'application';
+
+// 謎の背景画像
+$osaka-background: url('../images/background-photo.png');
+
+.ui {
+	background: $osaka-background no-repeat;
+}
+
+.columns-area > .column {
+	flex: auto;
+}
+

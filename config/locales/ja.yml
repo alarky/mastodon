@@ -802,7 +802,8 @@ ja:
     title: "%{instance} 利用規約・プライバシーポリシー"
   themes:
     contrast: ハイコントラスト
-    default: Mastodon
+    default: 大阪丼スタイル
+    mastodon: Mastodon
     mastodon-light: Mastodon (ライト)
   time:
     formats:
