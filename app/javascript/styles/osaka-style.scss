@@ -1,7 +1,8 @@
 @import 'application';
+@import 'mastodon/variables';
 
 // 謎の背景画像
-$osaka-background: url('../images/background-photo.png');
+$osaka-background: $ui-base-color url('../images/background-photo-light.png');
 
 .ui {
 	background: $osaka-background no-repeat;
@@ -9,5 +10,10 @@ $osaka-background: url('../images/background-photo.png');
 
 .columns-area > .column {
 	flex: auto;
+}
+
+body.no-reduce-motion {
+	background: $osaka-background;
+	background-attachment: fixed;
 }
 
