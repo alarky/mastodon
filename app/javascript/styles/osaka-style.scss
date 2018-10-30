@@ -1,0 +1,18 @@
+@import 'application';
+@import 'mastodon/variables';
+
+$osaka-background: $ui-base-color url('../images/background-photo.png');
+
+.ui {
+	background: $osaka-background no-repeat;
+}
+
+.column {
+	flex: auto;
+}
+
+body.no-reduce-motion {
+	background: $osaka-background;
+	background-attachment: fixed;
+}
+

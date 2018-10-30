@@ -802,7 +802,8 @@ en:
     title: "%{instance} Terms of Service and Privacy Policy"
   themes:
     contrast: High contrast
-    default: Mastodon
+    default: Osaka-don Style
+    mastodon: Mastodon
     mastodon-light: Mastodon (light)
   time:
     formats:

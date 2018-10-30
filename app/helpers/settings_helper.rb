@@ -24,7 +24,7 @@ module SettingsHelper
     id: 'Bahasa Indonesia',
     io: 'Ido',
     it: 'Italiano',
-    ja: '日本語',
+    ja: '大阪弁',
     ko: '한국어',
     nl: 'Nederlands',
     no: 'Norsk',
