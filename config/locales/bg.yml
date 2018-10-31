@@ -5,9 +5,6 @@ bg:
     about_this: За тази инстанция
     closed_registrations: В момента регистрациите за тази инстанция са затворени.
     contact: За контакти
-    description_headline: Какво е %{domain}?
-    domain_count_after: други инстанции
-    domain_count_before: Свързани към
     other_instances: Други инстанции
     source_code: Програмен код
     status_count_after: публикации
@@ -22,7 +19,6 @@ bg:
     people_followed_by: Хора, които %{name} следва
     people_who_follow: Хора, които следват %{name}
     posts: Публикации
-    remote_follow: Последвай
     unfollow: Не следвай
   application_mailer:
     settings: 'Промяна на предпочитанията за e-mail: %{link}'
@@ -52,11 +48,11 @@ bg:
       half_a_minute: Току-що
       less_than_x_minutes: "%{count} мин."
       less_than_x_seconds: Току-що
-      over_x_years: "%{count} г."
+      over_x_years: "%{count} г"
       x_days: "%{count} дни"
-      x_minutes: "%{count} мин."
-      x_months: "%{count} м."
-      x_seconds: "%{count} сек."
+      x_minutes: "%{count} мин"
+      x_months: "%{count} м"
+      x_seconds: "%{count} сек"
   exports:
     blocks: Вашите блокирания
     csv: CSV
@@ -64,27 +60,22 @@ bg:
     storage: Съхранение на мултимедия
   generic:
     changes_saved_msg: Успешно запазване на промените!
-    powered_by: поддържано от %{link}
     save_changes: Запази промените
-    validation_errors:
-      one: Нещо все още не е наред! Моля, прегледай грешката по-долу
-      other: Нещо все още не е наред! Моля, прегледай грешките по-долу
+    validation_errors: Нещо все още не е наред! Моля, прегледай грешките по-долу
   imports:
     preface: Можеш да импортираш някои данни, като например всички хора, които следваш или блокираш в акаунта си на тази инстанция, от файлове, създадени чрез експорт в друга инстанция.
-    success: Твоите данни бяха успешно качени и ще бъдат обработени впоследствие.
+    success: Твоите данни бяха успешно качени и ще бъдат обработени впоследствие
     types:
       blocking: Списък на блокираните
       following: Списък на последователите
     upload: Качване
-  landing_strip_html: "<strong>%{name}</strong> е потребител от %{link_to_root_path}. Можеш да ги следваш, или да контактуваш с тях, ако имаш акаунт където и да е из федерираната вселена на Mastodon."
-  landing_strip_signup_html: Ако нямаш акаунт, можеш да си <a href="%{sign_up_path}">създадеш ето тук</a>.
   media_attachments:
     validations:
       images_and_video: Не мога да прикача видеоклип към публикация, която вече съдържа изображения
       too_many: Не мога да прикача повече от 4 файла
   notification_mailer:
     digest:
-      body: 'Ето кратко резюме на нещата, които се случиха от последното ти посещение в %{instance} на %{since}:'
+      body: 'Ето кратко резюме на нещата, които се случиха от последното ти посещение на %{since}:'
       mention: "%{name} те спомена в:"
       new_followers_summary:
         one: Имаш един нов последовател! Ура!
@@ -144,7 +135,6 @@ bg:
       public: Публично
       unlisted: Публично, но не показвай в публичния канал
   stream_entries:
-    click_to_show: Покажи
     reblogged: споделено
     sensitive_content: Деликатно съдържание
   time:

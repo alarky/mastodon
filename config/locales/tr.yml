@@ -5,9 +5,6 @@ tr:
     about_this: Bu sunucu hakkında
     closed_registrations: Bu sunucu şu anda yeni kayıt almamaktadır.
     contact: İletişim
-    description_headline: Peki %{domain} nedir?
-    domain_count_after: sunucu var.
-    domain_count_before: Bağlı olduğu
     other_instances: Diğer sunucular
     source_code: Kaynak kodu
     status_count_after: adet gönderi yazıldı.
@@ -22,7 +19,6 @@ tr:
     people_followed_by: Kullanıcı %{name}'in takip ettikleri
     people_who_follow: Kullanıcı %{name}'i takip edenler
     posts: Gönderiler
-    remote_follow: Uzaktan takip et
     unfollow: Takibi bırak
   admin:
     accounts:
@@ -91,7 +87,7 @@ tr:
           suspend: Uzaklaştır
         title: Yeni domain bloğu
       reject_media: Ortam dosyalarını reddetme
-      reject_media_hint: Yerel olarak depolanmış ortam dosyalarını ve gelecekte indirilecek olanları reddeder. Uzaklaştırma için uygun değildir.
+      reject_media_hint: Yerel olarak depolanmış ortam dosyalarını ve gelecekte indirilecek olanları reddeder. Uzaklaştırma için uygun değildir
       severities:
         silence: Sustur
         suspend: Uzaklaştır
@@ -101,8 +97,8 @@ tr:
           one: Veritabanındaki bir hesap etkilendi
           other: Veritabanındaki %{count} hesap etkilendi
         retroactive:
-          silence: Bu domaindeki tüm hesapların üzerindeki susturulma işlemini kaldır.
-          suspend: Bu domaindeki tüm hesapların üzerindeki uzaklaştırma işlemini kaldır.
+          silence: Bu domaindeki tüm hesapların üzerindeki susturulma işlemini kaldır
+          suspend: Bu domaindeki tüm hesapların üzerindeki uzaklaştırma işlemini kaldır
         title: "%{domain} domain'i için yapılan işlemi geri al"
         undo: Geri al
       title: Domain Blokları
@@ -114,27 +110,21 @@ tr:
     reports:
       comment:
         none: Yok
-      id: ID
       mark_as_resolved: Giderildi olarak işaretle
       report: 'Şikayet #%{id}'
-      report_contents: İçerik
       reported_account: Şikayet edilen hesap
       reported_by: Şikayet eden
       resolved: Giderildi
-      silence_account: Hesabı sustur
       status: Durum
-      suspend_account: Hesabı uzaklaştır
-      target: Hedef
       title: Şikayetler
       unresolved: Giderilmedi
-      view: Görüntüle
     settings:
       contact_information:
         email: Herkese açık e-posta adresiniz
         username: Bir kullanıcı adı giriniz
       registrations:
         closed_message:
-          desc_html: Kayıt alımları kapatıldığında ana sayfada görüntülenecek mesajdır. <br> HTML etiketleri kullanabilirsiniz.
+          desc_html: Kayıt alımları kapatıldığında ana sayfada görüntülenecek mesajdır. <br> HTML etiketleri kullanabilirsiniz
           title: Kayıt alımları kapatılma mesajı
         open:
           title: Kayıt alımları
@@ -142,7 +132,7 @@ tr:
         desc_html: Ana sayfada paragraf olarak görüntülenecek bilgidir.<br>Özellikle <code>&lt;a&gt;</code> ve <code>&lt;em&gt;</code> olmak suretiyle HTML etiketlerini kullanabilirsiniz.
         title: Site açıklaması
       site_description_extended:
-        desc_html: Harici bilgi sayfasında gösterilir.<br>HTML etiketleri girebilirsiniz.
+        desc_html: Harici bilgi sayfasında gösterilir.<br>HTML etiketleri girebilirsiniz
         title: Sunucu hakkında detaylı bilgi
       site_title: Site başlığı
       title: Site Ayarları
@@ -170,7 +160,7 @@ tr:
     security: Kimlik bilgileri
     set_new_password: Yeni parola oluştur
   authorize_follow:
-    error: Uzak hesap aranırken bir hata oluştu.
+    error: Uzak hesap aranırken bir hata oluştu
     follow: Takip et
     title: "%{acct}'i takip et"
   datetime:
@@ -214,7 +204,6 @@ tr:
     unlocked_warning_title: Hesabınız kilitlendi
   generic:
     changes_saved_msg: Değişiklikler başarıyla kaydedildi!
-    powered_by: powered by %{link}
     save_changes: Değişiklikleri kaydet
     validation_errors:
       one: Bir şeyler ters gitti! Lütfen aşağıdaki hatayı gözden geçiriniz
@@ -227,15 +216,13 @@ tr:
       following: Takip edilenler listesi
       muting: Susturulanlar listesi
     upload: Yükle
-  landing_strip_html: "<strong>%{name}</strong>, %{link_to_root_path} sunucusundaki bir kullanıcıdır. Onu takip edebilir, veya Mastodon ağındaki bir hesabınızı kullanarak etkileşime geçebilirsiniz."
-  landing_strip_signup_html: Eğer hesabınız yoksa <a href="%{sign_up_path}">buradan kaydolabilirsiniz</a>.
   media_attachments:
     validations:
-      images_and_video: Halihazırda görsel içeren bir gönderiye video ekleyemezsiniz.
+      images_and_video: Halihazırda görsel içeren bir gönderiye video ekleyemezsiniz
       too_many: 4'ten fazla dosya ekleyemezsiniz
   notification_mailer:
     digest:
-      body: 'Son ziyaretiniz olan %{since}''den beri %{instance}''da kaçırdığınız şeylerin özeti:'
+      body: 'Son ziyaretiniz olan %{since}''den beri''da kaçırdığınız şeylerin özeti:'
       mention: "%{name} senden bahsetti:"
       new_followers_summary:
         one: Yeni bir takipçiniz var!
@@ -298,9 +285,8 @@ tr:
       public: Herkese açık
       public_long: Herkese açık zaman tüneline gönder
       unlisted: Listelenmemiş
-      unlisted_long: Herkes görebilir fakat herkese açık zaman tünellerinde listelenmez.
+      unlisted_long: Herkes görebilir fakat herkese açık zaman tünellerinde listelenmez
   stream_entries:
-    click_to_show: Görüntülemek için tıklayınız
     reblogged: boost edildi
     sensitive_content: Hassas içerik
   time:
@@ -311,7 +297,7 @@ tr:
     description_html: Eğer <strong>iki-faktörlü kimlik doğrulamayı</strong> aktif ederseniz, giriş yaparken sizin için giriş kodu üreten telefonunuza ihtiyaç duyacaksınız.
     disable: Devre dışı bırak
     enable: Aktifleştir
-    enabled_success: İki-faktörlü kimlik doğrulama başarıyla aktif edildi.
+    enabled_success: İki-faktörlü kimlik doğrulama başarıyla aktif edildi
     generate_recovery_codes: Kurtarma Kodlarını Oluştur
     instructions_html: <strong>Bu QR kodunu, telefonunuzdaki <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2">Google Authenticator</a> veya benzer bir TOTP uygulamasıyla taratınız</strong>. Bundan sonra giriş yaparken uygulamanın ürettiği kodu kullanarak giriş yapacaksınız.
     lost_recovery_codes: Kurtarma kodları telefonunuzu kaybettiğiniz durumlarda hesabınıza erişim yapabilmenize olanak tanır. Eğer kurtarma kodlarınızı kaybettiyseniz burada tekrar oluşturabilirsiniz. Eski kurtarma kodlarınız geçersiz hale gelecektir.

@@ -9,11 +9,11 @@ module Mastodon
     end
 
     def minor
-      4
+      6
     end
 
     def patch
-      5
+      1
     end
 
     def pre
@@ -32,8 +32,12 @@ module Mastodon
       [to_a.join('.'), flags].join
     end
 
+    def repository
+      'alarky/mastodon'
+    end
+
     def source_base_url
-      'https://github.com/alarky/mastodon'
+      "https://github.com/#{repository}"
     end
 
     # specify git tag or commit hash here
