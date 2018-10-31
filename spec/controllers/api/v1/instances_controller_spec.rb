@@ -6,7 +6,7 @@ RSpec.describe Api::V1::InstancesController, type: :controller do
   render_views
 
   let(:user)  { Fabricate(:user, account: Fabricate(:account, username: 'alice')) }
-  let(:token) { double acceptable?: true, resource_owner_id: user.id }
+  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id) }
 
   before do
     allow(controller).to receive(:doorkeeper_token) { token }
@@ -16,7 +16,7 @@ RSpec.describe Api::V1::InstancesController, type: :controller do
     it 'returns http success' do
       get :show
 
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(200)
     end
   end
 end

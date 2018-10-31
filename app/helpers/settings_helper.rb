@@ -4,31 +4,51 @@ module SettingsHelper
   HUMAN_LOCALES = {
     en: 'English',
     ar: 'العربية',
+    ast: 'l\'asturianu',
     bg: 'Български',
     ca: 'Català',
+    co: 'Corsu',
+    cs: 'Čeština',
+    cy: 'Cymraeg',
+    da: 'Dansk',
     de: 'Deutsch',
+    el: 'Ελληνικά',
     eo: 'Esperanto',
     es: 'Español',
+    eu: 'Euskara',
     fa: 'فارسی',
     fi: 'Suomi',
     fr: 'Français',
+    gl: 'Galego',
     he: 'עברית',
     hr: 'Hrvatski',
     hu: 'Magyar',
+    hy: 'Հայերեն',
     id: 'Bahasa Indonesia',
     io: 'Ido',
     it: 'Italiano',
     ja: '大阪弁',
+    ka: 'ქართული',
+    ko: '한국어',
     nl: 'Nederlands',
     no: 'Norsk',
     oc: 'Occitan',
     pl: 'Polszczyzna',
     pt: 'Português',
     'pt-BR': 'Português do Brasil',
+    ro: 'Limba română',
     ru: 'Русский',
+    sk: 'Slovenčina',
+    sl: 'Slovenščina',
+    sr: 'Српски',
+    'sr-Latn': 'Srpski (latinica)',
+    sv: 'Svenska',
+    ta: 'தமிழ்',
+    te: 'తెలుగు',
     th: 'ภาษาไทย',
     tr: 'Türkçe',
     uk: 'Українська',
+    zh: '中文',
     'zh-CN': '简体中文',
     'zh-HK': '繁體中文（香港）',
     'zh-TW': '繁體中文（臺灣）',
@@ -36,6 +56,10 @@ module SettingsHelper
 
   def human_locale(locale)
     HUMAN_LOCALES[locale]
+  end
+
+  def filterable_languages
+    LanguageDetector.instance.language_names.select(&HUMAN_LOCALES.method(:key?))
   end
 
   def hash_to_object(hash)

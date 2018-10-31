@@ -1,53 +1,59 @@
 import React from 'react';
 import { connect } from 'react-redux';
+import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import PropTypes from 'prop-types';
 import StatusListContainer from '../ui/containers/status_list_container';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
-import {
-  refreshPublicTimeline,
-  expandPublicTimeline,
-  updateTimeline,
-  deleteFromTimelines,
-  connectTimeline,
-  disconnectTimeline,
-} from '../../actions/timelines';
+import { expandPublicTimeline } from '../../actions/timelines';
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
-import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ColumnSettingsContainer from './containers/column_settings_container';
-import createStream from '../../stream';
+import { connectPublicStream } from '../../actions/streaming';
 
 const messages = defineMessages({
   title: { id: 'column.public', defaultMessage: 'Federated timeline' },
 });
 
-const mapStateToProps = state => ({
-  hasUnread: state.getIn(['timelines', 'public', 'unread']) > 0,
-  streamingAPIBaseURL: state.getIn(['meta', 'streaming_api_base_url']),
-  accessToken: state.getIn(['meta', 'access_token']),
-});
+const mapStateToProps = (state, { onlyMedia, columnId }) => {
+  const uuid = columnId;
+  const columns = state.getIn(['settings', 'columns']);
+  const index = columns.findIndex(c => c.get('uuid') === uuid);
 
-@connect(mapStateToProps)
+  return {
+    hasUnread: state.getIn(['timelines', `public${onlyMedia ? ':media' : ''}`, 'unread']) > 0,
+    onlyMedia: (columnId && index >= 0) ? columns.get(index).getIn(['params', 'other', 'onlyMedia']) : state.getIn(['settings', 'public', 'other', 'onlyMedia']),
+  };
+};
+
+export default @connect(mapStateToProps)
 @injectIntl
-export default class PublicTimeline extends React.PureComponent {
+class PublicTimeline extends React.PureComponent {
+
+  static contextTypes = {
+    router: PropTypes.object,
+  };
+
+  static defaultProps = {
+    onlyMedia: false,
+  };
 
   static propTypes = {
     dispatch: PropTypes.func.isRequired,
+    shouldUpdateScroll: PropTypes.func,
     intl: PropTypes.object.isRequired,
     columnId: PropTypes.string,
     multiColumn: PropTypes.bool,
-    streamingAPIBaseURL: PropTypes.string.isRequired,
-    accessToken: PropTypes.string.isRequired,
     hasUnread: PropTypes.bool,
+    onlyMedia: PropTypes.bool,
   };
 
   handlePin = () => {
-    const { columnId, dispatch } = this.props;
+    const { columnId, dispatch, onlyMedia } = this.props;
 
     if (columnId) {
       dispatch(removeColumn(columnId));
     } else {
-      dispatch(addColumn('PUBLIC', {}));
+      dispatch(addColumn('PUBLIC', { other: { onlyMedia } }));
     }
   }
 
@@ -61,46 +67,26 @@ export default class PublicTimeline extends React.PureComponent {
   }
 
   componentDidMount () {
-    const { dispatch, streamingAPIBaseURL, accessToken } = this.props;
+    const { dispatch, onlyMedia } = this.props;
 
-    dispatch(refreshPublicTimeline());
+    dispatch(expandPublicTimeline({ onlyMedia }));
+    this.disconnect = dispatch(connectPublicStream({ onlyMedia }));
+  }
 
-    if (typeof this._subscription !== 'undefined') {
-      return;
+  componentDidUpdate (prevProps) {
+    if (prevProps.onlyMedia !== this.props.onlyMedia) {
+      const { dispatch, onlyMedia } = this.props;
+
+      this.disconnect();
+      dispatch(expandPublicTimeline({ onlyMedia }));
+      this.disconnect = dispatch(connectPublicStream({ onlyMedia }));
     }
-
-    this._subscription = createStream(streamingAPIBaseURL, accessToken, 'public', {
-
-      connected () {
-        dispatch(connectTimeline('public'));
-      },
-
-      reconnected () {
-        dispatch(connectTimeline('public'));
-      },
-
-      disconnected () {
-        dispatch(disconnectTimeline('public'));
-      },
-
-      received (data) {
-        switch(data.event) {
-        case 'update':
-          dispatch(updateTimeline('public', JSON.parse(data.payload)));
-          break;
-        case 'delete':
-          dispatch(deleteFromTimelines(data.payload));
-          break;
-        }
-      },
-
-    });
   }
 
   componentWillUnmount () {
-    if (typeof this._subscription !== 'undefined') {
-      this._subscription.close();
-      this._subscription = null;
+    if (this.disconnect) {
+      this.disconnect();
+      this.disconnect = null;
     }
   }
 
@@ -108,16 +94,25 @@ export default class PublicTimeline extends React.PureComponent {
     this.column = c;
   }
 
-  handleLoadMore = () => {
-    this.props.dispatch(expandPublicTimeline());
+  handleLoadMore = maxId => {
+    const { dispatch, onlyMedia } = this.props;
+
+    dispatch(expandPublicTimeline({ maxId, onlyMedia }));
+  }
+
+  handleSettingChanged = (key, checked) => {
+    const { columnId } = this.props;
+    if (!columnId && key[0] === 'other' && key[1] === 'onlyMedia') {
+      this.context.router.history.replace(`/timelines/public${checked ? '/media' : ''}`);
+    }
   }
 
   render () {
-    const { intl, columnId, hasUnread, multiColumn } = this.props;
+    const { intl, shouldUpdateScroll, columnId, hasUnread, multiColumn, onlyMedia } = this.props;
     const pinned = !!columnId;
 
     return (
-      <Column ref={this.setRef}>
+      <Column ref={this.setRef} label={intl.formatMessage(messages.title)}>
         <ColumnHeader
           icon='globe'
           active={hasUnread}
@@ -128,15 +123,16 @@ export default class PublicTimeline extends React.PureComponent {
           pinned={pinned}
           multiColumn={multiColumn}
         >
-          <ColumnSettingsContainer />
+          <ColumnSettingsContainer onChange={this.handleSettingChanged} columnId={columnId} />
         </ColumnHeader>
 
         <StatusListContainer
-          timelineId='public'
-          loadMore={this.handleLoadMore}
+          timelineId={`public${onlyMedia ? ':media' : ''}`}
+          onLoadMore={this.handleLoadMore}
           trackScroll={!pinned}
           scrollKey={`public_timeline-${columnId}`}
           emptyMessage={<FormattedMessage id='empty_column.public' defaultMessage='There is nothing here! Write something publicly, or manually follow users from other instances to fill it up' />}
+          shouldUpdateScroll={shouldUpdateScroll}
         />
       </Column>
     );

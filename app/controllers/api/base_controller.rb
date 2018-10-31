@@ -6,8 +6,10 @@ class Api::BaseController < ApplicationController
 
   include RateLimitHeaders
 
-  skip_before_action :verify_authenticity_token
   skip_before_action :store_current_location
+  skip_before_action :check_user_permissions
+
+  protect_from_forgery with: :null_session
 
   rescue_from ActiveRecord::RecordInvalid, Mastodon::ValidationError do |e|
     render json: { error: e.to_s }, status: 422
@@ -17,11 +19,7 @@ class Api::BaseController < ApplicationController
     render json: { error: 'Record not found' }, status: 404
   end
 
-  rescue_from Goldfinger::Error do
-    render json: { error: 'Remote account could not be resolved' }, status: 422
-  end
-
-  rescue_from HTTP::Error do
+  rescue_from HTTP::Error, Mastodon::UnexpectedResponseError do
     render json: { error: 'Remote data could not be fetched' }, status: 503
   end
 
@@ -47,12 +45,16 @@ class Api::BaseController < ApplicationController
     links = []
     links << [next_path, [%w(rel next)]] if next_path
     links << [prev_path, [%w(rel prev)]] if prev_path
-    response.headers['Link'] = LinkHeader.new(links)
+    response.headers['Link'] = LinkHeader.new(links) unless links.empty?
   end
 
   def limit_param(default_limit)
     return default_limit unless params[:limit]
     [params[:limit].to_i.abs, default_limit * 2].min
+  end
+
+  def params_slice(*keys)
+    params.slice(*keys).permit(*keys)
   end
 
   def current_resource_owner
@@ -66,28 +68,20 @@ class Api::BaseController < ApplicationController
   end
 
   def require_user!
-    current_resource_owner
-    set_user_activity
-  rescue ActiveRecord::RecordNotFound
-    render json: { error: 'This method requires an authenticated user' }, status: 422
+    if current_user && !current_user.disabled?
+      set_user_activity
+    elsif current_user
+      render json: { error: 'Your login is currently disabled' }, status: 403
+    else
+      render json: { error: 'This method requires an authenticated user' }, status: 422
+    end
   end
 
   def render_empty
     render json: {}, status: 200
   end
 
-  def set_maps(statuses) # rubocop:disable Style/AccessorMethodName
-    if current_account.nil?
-      @reblogs_map    = {}
-      @favourites_map = {}
-      @mutes_map      = {}
-      return
-    end
-
-    status_ids       = statuses.compact.flat_map { |s| [s.id, s.reblog_of_id] }.uniq
-    conversation_ids = statuses.compact.map(&:conversation_id).compact.uniq
-    @reblogs_map     = Status.reblogs_map(status_ids, current_account)
-    @favourites_map  = Status.favourites_map(status_ids, current_account)
-    @mutes_map       = Status.mutes_map(conversation_ids, current_account)
+  def authorize_if_got_token!(*scopes)
+    doorkeeper_authorize!(*scopes) if doorkeeper_token
   end
 end

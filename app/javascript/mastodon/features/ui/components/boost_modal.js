@@ -13,8 +13,8 @@ const messages = defineMessages({
   reblog: { id: 'status.reblog', defaultMessage: 'Boost' },
 });
 
-@injectIntl
-export default class BoostModal extends ImmutablePureComponent {
+export default @injectIntl
+class BoostModal extends ImmutablePureComponent {
 
   static contextTypes = {
     router: PropTypes.object,
@@ -37,7 +37,7 @@ export default class BoostModal extends ImmutablePureComponent {
   }
 
   handleAccountClick = (e) => {
-    if (e.button === 0) {
+    if (e.button === 0 && !(e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       this.props.onClose();
       this.context.router.history.push(`/accounts/${this.props.status.getIn(['account', 'id'])}`);
@@ -62,7 +62,7 @@ export default class BoostModal extends ImmutablePureComponent {
 
               <a onClick={this.handleAccountClick} href={status.getIn(['account', 'url'])} className='status__display-name'>
                 <div className='status__avatar'>
-                  <Avatar src={status.getIn(['account', 'avatar'])} staticSrc={status.getIn(['account', 'avatar_static'])} size={48} />
+                  <Avatar account={status.get('account')} size={48} />
                 </div>
 
                 <DisplayName account={status.get('account')} />

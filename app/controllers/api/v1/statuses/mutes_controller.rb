@@ -3,7 +3,7 @@
 class Api::V1::Statuses::MutesController < Api::BaseController
   include Authorization
 
-  before_action -> { doorkeeper_authorize! :write }
+  before_action -> { doorkeeper_authorize! :write, :'write:mutes' }
   before_action :require_user!
   before_action :set_status
   before_action :set_conversation
@@ -14,14 +14,14 @@ class Api::V1::Statuses::MutesController < Api::BaseController
     current_account.mute_conversation!(@conversation)
     @mutes_map = { @conversation.id => true }
 
-    render 'api/v1/statuses/show'
+    render json: @status, serializer: REST::StatusSerializer
   end
 
   def destroy
     current_account.unmute_conversation!(@conversation)
     @mutes_map = { @conversation.id => false }
 
-    render 'api/v1/statuses/show'
+    render json: @status, serializer: REST::StatusSerializer
   end
 
   private

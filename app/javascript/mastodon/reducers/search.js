@@ -4,14 +4,18 @@ import {
   SEARCH_FETCH_SUCCESS,
   SEARCH_SHOW,
 } from '../actions/search';
-import { COMPOSE_MENTION, COMPOSE_REPLY } from '../actions/compose';
-import Immutable from 'immutable';
+import {
+  COMPOSE_MENTION,
+  COMPOSE_REPLY,
+  COMPOSE_DIRECT,
+} from '../actions/compose';
+import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
-const initialState = Immutable.Map({
+const initialState = ImmutableMap({
   value: '',
   submitted: false,
   hidden: false,
-  results: Immutable.Map(),
+  results: ImmutableMap(),
 });
 
 export default function search(state = initialState, action) {
@@ -21,7 +25,7 @@ export default function search(state = initialState, action) {
   case SEARCH_CLEAR:
     return state.withMutations(map => {
       map.set('value', '');
-      map.set('results', Immutable.Map());
+      map.set('results', ImmutableMap());
       map.set('submitted', false);
       map.set('hidden', false);
     });
@@ -29,12 +33,13 @@ export default function search(state = initialState, action) {
     return state.set('hidden', false);
   case COMPOSE_REPLY:
   case COMPOSE_MENTION:
+  case COMPOSE_DIRECT:
     return state.set('hidden', true);
   case SEARCH_FETCH_SUCCESS:
-    return state.set('results', Immutable.Map({
-      accounts: Immutable.List(action.results.accounts.map(item => item.id)),
-      statuses: Immutable.List(action.results.statuses.map(item => item.id)),
-      hashtags: Immutable.List(action.results.hashtags),
+    return state.set('results', ImmutableMap({
+      accounts: ImmutableList(action.results.accounts.map(item => item.id)),
+      statuses: ImmutableList(action.results.statuses.map(item => item.id)),
+      hashtags: fromJS(action.results.hashtags),
     })).set('submitted', true);
   default:
     return state;

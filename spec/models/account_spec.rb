@@ -93,21 +93,44 @@ RSpec.describe Account, type: :model do
   end
 
   describe '#save_with_optional_media!' do
-    it 'sets default avatar, header, avatar_remote_url, and header_remote_url if some of them are invalid' do
-      stub_request(:get, 'https://remote/valid_avatar').to_return(request_fixture('avatar.txt'))
-      stub_request(:get, 'https://remote/invalid_avatar').to_return(request_fixture('feed.txt'))
-      account = Fabricate(:account,
-                          avatar_remote_url: 'https://remote/valid_avatar',
-                          header_remote_url: 'https://remote/valid_avatar')
+    before do
+      stub_request(:get, 'https://remote.test/valid_avatar').to_return(request_fixture('avatar.txt'))
+      stub_request(:get, 'https://remote.test/invalid_avatar').to_return(request_fixture('feed.txt'))
+    end
 
-      account.avatar_remote_url = 'https://remote/invalid_avatar'
-      account.save_with_optional_media!
+    let(:account) do
+      Fabricate(:account,
+                avatar_remote_url: 'https://remote.test/valid_avatar',
+                header_remote_url: 'https://remote.test/valid_avatar')
+    end
 
-      account.reload
-      expect(account.avatar_remote_url).to eq ''
-      expect(account.header_remote_url).to eq ''
-      expect(account.avatar_file_name).to eq nil
-      expect(account.header_file_name).to eq nil
+    let!(:expectation) { account.dup }
+
+    context 'with valid properties' do
+      before do
+        account.save_with_optional_media!
+      end
+
+      it 'unchanges avatar, header, avatar_remote_url, and header_remote_url' do
+        expect(account.avatar_remote_url).to eq expectation.avatar_remote_url
+        expect(account.header_remote_url).to eq expectation.header_remote_url
+        expect(account.avatar_file_name).to  eq expectation.avatar_file_name
+        expect(account.header_file_name).to  eq expectation.header_file_name
+      end
+    end
+
+    context 'with invalid properties' do
+      before do
+        account.avatar_remote_url = 'https://remote.test/invalid_avatar'
+        account.save_with_optional_media!
+      end
+
+      it 'sets default avatar, header, avatar_remote_url, and header_remote_url' do
+        expect(account.avatar_remote_url).to eq ''
+        expect(account.header_remote_url).to eq ''
+        expect(account.avatar_file_name).to  eq nil
+        expect(account.header_file_name).to  eq nil
+      end
     end
   end
 
@@ -120,6 +143,61 @@ RSpec.describe Account, type: :model do
     it 'returns true when subscription expiration has been set' do
       account = Fabricate(:account, subscription_expires_at: 30.days.from_now)
       expect(account.subscribed?).to be true
+    end
+  end
+
+  describe '#possibly_stale?' do
+    let(:account) { Fabricate(:account, last_webfingered_at: last_webfingered_at) }
+
+    context 'last_webfingered_at is nil' do
+      let(:last_webfingered_at) { nil }
+
+      it 'returns true' do
+        expect(account.possibly_stale?).to be true
+      end
+    end
+
+    context 'last_webfingered_at is more than 24 hours before' do
+      let(:last_webfingered_at) { 25.hours.ago }
+
+      it 'returns true' do
+        expect(account.possibly_stale?).to be true
+      end
+    end
+
+    context 'last_webfingered_at is less than 24 hours before' do
+      let(:last_webfingered_at) { 23.hours.ago }
+
+      it 'returns false' do
+        expect(account.possibly_stale?).to be false
+      end
+    end
+  end
+
+  describe '#refresh!' do
+    let(:account) { Fabricate(:account, domain: domain) }
+    let(:acct)    { account.acct }
+
+    context 'domain is nil' do
+      let(:domain) { nil }
+
+      it 'returns nil' do
+        expect(account.refresh!).to be_nil
+      end
+
+      it 'calls not ResolveAccountService#call' do
+        expect_any_instance_of(ResolveAccountService).not_to receive(:call).with(acct)
+        account.refresh!
+      end
+    end
+
+    context 'domain is present' do
+      let(:domain) { 'example.com' }
+
+      it 'calls ResolveAccountService#call' do
+        expect_any_instance_of(ResolveAccountService).to receive(:call).with(acct).once
+        account.refresh!
+      end
     end
   end
 
@@ -197,7 +275,7 @@ RSpec.describe Account, type: :model do
 
     subject { Fabricate(:account) }
 
-    context 'when the status is a reblog of another status'do
+    context 'when the status is a reblog of another status' do
       let(:original_reblog) do
         author = Fabricate(:account, username: 'original_reblogger')
         Fabricate(:status, reblog: original_status, account: author)
@@ -376,74 +454,34 @@ RSpec.describe Account, type: :model do
     end
   end
 
-  describe '.triadic_closures' do
-    let!(:me) { Fabricate(:account) }
-    let!(:friend) { Fabricate(:account) }
-    let!(:friends_friend) { Fabricate(:account) }
-    let!(:both_follow) { Fabricate(:account) }
+  describe '#statuses_count' do
+    subject { Fabricate(:account) }
 
-    before do
-      me.follow!(friend)
-      friend.follow!(friends_friend)
-
-      me.follow!(both_follow)
-      friend.follow!(both_follow)
+    it 'counts statuses' do
+      Fabricate(:status, account: subject)
+      Fabricate(:status, account: subject)
+      expect(subject.statuses_count).to eq 2
     end
 
-    it 'finds accounts you dont follow which are followed by accounts you do follow' do
-      expect(described_class.triadic_closures(me)).to eq [friends_friend]
+    it 'does not count direct statuses' do
+      Fabricate(:status, account: subject, visibility: :direct)
+      expect(subject.statuses_count).to eq 0
     end
 
-    it 'limits by 5 with offset 0 by defualt' do
-      first_degree = 6.times.map { Fabricate(:account) }
-      matches = 5.times.map { Fabricate(:account) }
-      first_degree.each { |account| me.follow!(account) }
-      matches.each do |match|
-        first_degree.each { |account| account.follow!(match) }
-        first_degree.shift
-      end
-
-      expect(described_class.triadic_closures(me)).to eq matches
+    it 'is decremented when status is removed' do
+      status = Fabricate(:status, account: subject)
+      expect(subject.statuses_count).to eq 1
+      status.destroy
+      expect(subject.statuses_count).to eq 0
     end
 
-    it 'accepts arbitrary limits' do
-      another_friend = Fabricate(:account)
-      higher_friends_friend = Fabricate(:account)
-      me.follow!(another_friend)
-      friend.follow!(higher_friends_friend)
-      another_friend.follow!(higher_friends_friend)
-
-      expect(described_class.triadic_closures(me, limit: 1)).to eq [higher_friends_friend]
-    end
-
-    it 'acceps arbitrary offset' do
-      another_friend = Fabricate(:account)
-      higher_friends_friend = Fabricate(:account)
-      me.follow!(another_friend)
-      friend.follow!(higher_friends_friend)
-      another_friend.follow!(higher_friends_friend)
-
-      expect(described_class.triadic_closures(me, offset: 1)).to eq [friends_friend]
-    end
-
-    context 'when you block account' do
-      before do
-        me.block!(friends_friend)
-      end
-
-      it 'rejects blocked accounts' do
-        expect(described_class.triadic_closures(me)).to be_empty
-      end
-    end
-
-    context 'when you mute account' do
-      before do
-        me.mute!(friends_friend)
-      end
-
-      it 'rejects muted accounts' do
-        expect(described_class.triadic_closures(me)).to be_empty
-      end
+    it 'is decremented when status is removed when account is not preloaded' do
+      status = Fabricate(:status, account: subject)
+      expect(subject.reload.statuses_count).to eq 1
+      clean_status = Status.find(status.id)
+      expect(clean_status.association(:account).loaded?).to be false
+      clean_status.destroy
+      expect(subject.reload.statuses_count).to eq 0
     end
   end
 
@@ -521,7 +559,7 @@ RSpec.describe Account, type: :model do
     end
 
     context 'when is local' do
-      it 'is invalid if the username is not unique in case-insensitive comparsion among local accounts' do
+      it 'is invalid if the username is not unique in case-insensitive comparison among local accounts' do
         account_1 = Fabricate(:account, username: 'the_doctor')
         account_2 = Fabricate.build(:account, username: 'the_Doctor')
         account_2.valid?
@@ -580,10 +618,10 @@ RSpec.describe Account, type: :model do
         expect(account).not_to model_have_error_on_field(:username)
       end
 
-      it 'is valid even if the username doesn\'t only contains letters, numbers and underscores' do
+      it 'is invalid if the username doesn\'t only contains letters, numbers and underscores' do
         account = Fabricate.build(:account, domain: 'domain', username: 'the-doctor')
         account.valid?
-        expect(account).not_to model_have_error_on_field(:username)
+        expect(account).to model_have_error_on_field(:username)
       end
 
       it 'is valid even if the username is longer then 30 characters' do
@@ -642,7 +680,6 @@ RSpec.describe Account, type: :model do
       it 'returns remote accounts with followers whose subscription expiration date is past or not given' do
         local = Fabricate(:account, domain: nil)
         matches = [
-          { domain: 'remote', subscription_expires_at: nil },
           { domain: 'remote', subscription_expires_at: '2000-01-01T00:00:00Z' },
         ].map(&method(:Fabricate).curry(2).call(:account))
         matches.each(&local.method(:follow!))
@@ -738,7 +775,8 @@ RSpec.describe Account, type: :model do
   end
 
   context 'when is local' do
-    it 'generates keys' do
+    # Test disabled because test environment omits autogenerating keys for performance
+    xit 'generates keys' do
       account = Account.create!(domain: nil, username: Faker::Internet.user_name(nil, ['_']))
       expect(account.keypair.private?).to eq true
     end

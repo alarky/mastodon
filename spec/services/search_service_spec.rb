@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-describe SearchService do
+describe SearchService, type: :service do
   subject { described_class.new }
 
   describe '#call' do
@@ -26,10 +26,10 @@ describe SearchService do
       context 'that does not find anything' do
         it 'returns the empty results' do
           service = double(call: nil)
-          allow(FetchRemoteResourceService).to receive(:new).and_return(service)
+          allow(ResolveURLService).to receive(:new).and_return(service)
           results = subject.call(@query, 10)
 
-          expect(service).to have_received(:call).with(@query)
+          expect(service).to have_received(:call).with(@query, on_behalf_of: nil)
           expect(results).to eq empty_results
         end
       end
@@ -38,10 +38,10 @@ describe SearchService do
         it 'includes the account in the results' do
           account = Account.new
           service = double(call: account)
-          allow(FetchRemoteResourceService).to receive(:new).and_return(service)
+          allow(ResolveURLService).to receive(:new).and_return(service)
 
           results = subject.call(@query, 10)
-          expect(service).to have_received(:call).with(@query)
+          expect(service).to have_received(:call).with(@query, on_behalf_of: nil)
           expect(results).to eq empty_results.merge(accounts: [account])
         end
       end
@@ -50,10 +50,10 @@ describe SearchService do
         it 'includes the status in the results' do
           status = Status.new
           service = double(call: status)
-          allow(FetchRemoteResourceService).to receive(:new).and_return(service)
+          allow(ResolveURLService).to receive(:new).and_return(service)
 
           results = subject.call(@query, 10)
-          expect(service).to have_received(:call).with(@query)
+          expect(service).to have_received(:call).with(@query, on_behalf_of: nil)
           expect(results).to eq empty_results.merge(statuses: [status])
         end
       end
@@ -68,7 +68,7 @@ describe SearchService do
           allow(AccountSearchService).to receive(:new).and_return(service)
 
           results = subject.call(query, 10)
-          expect(service).to have_received(:call).with(query, 10, false, nil)
+          expect(service).to have_received(:call).with(query, 10, nil, resolve: false)
           expect(results).to eq empty_results.merge(accounts: [account])
         end
       end

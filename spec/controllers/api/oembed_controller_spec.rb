@@ -8,11 +8,12 @@ RSpec.describe Api::OEmbedController, type: :controller do
 
   describe 'GET #show' do
     before do
+      request.host = Rails.configuration.x.local_domain
       get :show, params: { url: account_stream_entry_url(alice, status.stream_entry) }, format: :json
     end
 
     it 'returns http success' do
-      expect(response).to have_http_status(:success)
+      expect(response).to have_http_status(200)
     end
   end
 end

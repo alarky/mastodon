@@ -5,9 +5,13 @@ export default class ExtendedVideoPlayer extends React.PureComponent {
 
   static propTypes = {
     src: PropTypes.string.isRequired,
+    alt: PropTypes.string,
+    width: PropTypes.number,
+    height: PropTypes.number,
     time: PropTypes.number,
     controls: PropTypes.bool.isRequired,
     muted: PropTypes.bool.isRequired,
+    onClick: PropTypes.func,
   };
 
   handleLoadedData = () => {
@@ -28,16 +32,29 @@ export default class ExtendedVideoPlayer extends React.PureComponent {
     this.video = c;
   }
 
+  handleClick = e => {
+    e.stopPropagation();
+    const handler = this.props.onClick;
+    if (handler) handler();
+  }
+
   render () {
+    const { src, muted, controls, alt } = this.props;
+
     return (
       <div className='extended-video-player'>
         <video
           ref={this.setRef}
-          src={this.props.src}
+          src={src}
           autoPlay
-          muted={this.props.muted}
-          controls={this.props.controls}
-          loop={!this.props.controls}
+          role='button'
+          tabIndex='0'
+          aria-label={alt}
+          title={alt}
+          muted={muted}
+          controls={controls}
+          loop={!controls}
+          onClick={this.handleClick}
         />
       </div>
     );

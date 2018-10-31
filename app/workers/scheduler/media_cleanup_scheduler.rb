@@ -1,11 +1,11 @@
 # frozen_string_literal: true
-require 'sidekiq-scheduler'
 
 class Scheduler::MediaCleanupScheduler
   include Sidekiq::Worker
 
+  sidekiq_options unique: :until_executed, retry: 0
+
   def perform
-    logger.info 'Cleaning out unattached media attachments'
     unattached_media.find_each(&:destroy)
   end
 

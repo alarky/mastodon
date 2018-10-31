@@ -1,32 +1,14 @@
 ---
 bg:
   about:
-    about_mastodon: Mastodon е <em>безплатен</em> сървър с <em>отворен код</em> за социални мрежи. Като <em>децентрализирана</em> алтернатива на комерсиалните платформи, той позволява избягването на риска от монополизация на твоята комуникация от единични компании. Изберете си сървър, на който се доверявате, и ще можете да контактувате с всички останали. Всеки може да пусне Mastodon и лесно да вземе участие в <em>социалната мрежа</em>.
+    about_mastodon_html: Mastodon е <em>безплатен</em> сървър с <em>отворен код</em> за социални мрежи. Като <em>децентрализирана</em> алтернатива на комерсиалните платформи, той позволява избягването на риска от монополизация на твоята комуникация от единични компании. Изберете си сървър, на който се доверявате, и ще можете да контактувате с всички останали. Всеки може да пусне Mastodon и лесно да вземе участие в <em>социалната мрежа</em>.
     about_this: За тази инстанция
-    apps: Приложения
-    business_email: 'Служебен e-mail:'
     closed_registrations: В момента регистрациите за тази инстанция са затворени.
     contact: За контакти
-    description_headline: Какво е %{domain}?
-    domain_count_after: други инстанции
-    domain_count_before: Свързани към
-    features:
-      api: Отворено API за приложения и услуги
-      blocks: Богат на инструменти за блокиране и заглушаване
-      characters: Публикации от 500 символа
-      chronology: Публикациите се показват хронологично
-      ethics: 'Етичен дизайн: без реклами и проследяване'
-      gifv: GIFV комплекти и кратки видео клипове
-      privacy: Настройване на поверителността за всяка публикация
-      public: Публични канали
-    features_headline: Какво откроява Mastodon
-    get_started: Първи стъпки
-    links: Връзки
     other_instances: Други инстанции
     source_code: Програмен код
     status_count_after: публикации
     status_count_before: Написали
-    terms: Условия
     user_count_after: потребители
     user_count_before: Дом на
   accounts:
@@ -37,16 +19,13 @@ bg:
     people_followed_by: Хора, които %{name} следва
     people_who_follow: Хора, които следват %{name}
     posts: Публикации
-    remote_follow: Последвай
     unfollow: Не следвай
   application_mailer:
     settings: 'Промяна на предпочитанията за e-mail: %{link}'
-    signature: Mastodon известия от %{instance}
     view: 'Преглед:'
   applications:
     invalid_url: Предоставеният URL е невалиден
   auth:
-    change_password: Идентификационни данни
     didnt_get_confirmation: Не получих инструкции за потвърждение
     forgot_password: Забравих си паролата
     login: Влизане
@@ -54,11 +33,11 @@ bg:
     register: Регистрация
     resend_confirmation: Изпрати отново инструкции за потвърждение
     reset_password: Подновяване на паролата
+    security: Идентификационни данни
     set_new_password: Задай нова парола
   authorize_follow:
     error: Възникна грешка в откриването на потребителя
     follow: Последвай
-    prompt_html: "(<strong>%{self}</strong>), молбата ти беше изпратена до:"
     title: Последвай %{acct}
   datetime:
     distance_in_words:
@@ -69,11 +48,11 @@ bg:
       half_a_minute: Току-що
       less_than_x_minutes: "%{count} мин."
       less_than_x_seconds: Току-що
-      over_x_years: "%{count} г."
+      over_x_years: "%{count} г"
       x_days: "%{count} дни"
-      x_minutes: "%{count} мин."
-      x_months: "%{count} м."
-      x_seconds: "%{count} сек."
+      x_minutes: "%{count} мин"
+      x_months: "%{count} м"
+      x_seconds: "%{count} сек"
   exports:
     blocks: Вашите блокирания
     csv: CSV
@@ -81,27 +60,22 @@ bg:
     storage: Съхранение на мултимедия
   generic:
     changes_saved_msg: Успешно запазване на промените!
-    powered_by: поддържано от %{link}
     save_changes: Запази промените
-    validation_errors:
-      one: Нещо все още не е наред! Моля, прегледай грешката по-долу
-      other: Нещо все още не е наред! Моля, прегледай грешките по-долу
+    validation_errors: Нещо все още не е наред! Моля, прегледай грешките по-долу
   imports:
     preface: Можеш да импортираш някои данни, като например всички хора, които следваш или блокираш в акаунта си на тази инстанция, от файлове, създадени чрез експорт в друга инстанция.
-    success: Твоите данни бяха успешно качени и ще бъдат обработени впоследствие.
+    success: Твоите данни бяха успешно качени и ще бъдат обработени впоследствие
     types:
       blocking: Списък на блокираните
       following: Списък на последователите
     upload: Качване
-  landing_strip_html: <strong>%{name}</strong> е потребител от %{link_to_root_path}. Можеш да ги следваш, или да контактуваш с тях, ако имаш акаунт където и да е из федерираната вселена на Mastodon.
-  landing_strip_signup_html: Ако нямаш акаунт, можеш да си <a href="%{sign_up_path}">създадеш ето тук</a>.
   media_attachments:
     validations:
       images_and_video: Не мога да прикача видеоклип към публикация, която вече съдържа изображения
       too_many: Не мога да прикача повече от 4 файла
   notification_mailer:
     digest:
-      body: 'Ето кратко резюме на нещата, които се случиха от последното ти посещение в %{instance} на %{since}:'
+      body: 'Ето кратко резюме на нещата, които се случиха от последното ти посещение на %{since}:'
       mention: "%{name} те спомена в:"
       new_followers_summary:
         one: Имаш един нов последовател! Ура!
@@ -124,6 +98,17 @@ bg:
     reblog:
       body: 'Твоята публикация беше споделена от %{name}:'
       subject: "%{name} сподели публикацията ти"
+  number:
+    human:
+      decimal_units:
+        format: "%n%u"
+        units:
+          billion: B
+          million: M
+          quadrillion: Q
+          thousand: K
+          trillion: T
+          unit: ''
   pagination:
     next: Напред
     prev: Назад
@@ -150,7 +135,6 @@ bg:
       public: Публично
       unlisted: Публично, но не показвай в публичния канал
   stream_entries:
-    click_to_show: Покажи
     reblogged: споделено
     sensitive_content: Деликатно съдържание
   time:

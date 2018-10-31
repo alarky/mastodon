@@ -1,21 +1,28 @@
 import React from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
-import escapeTextContentForBrowser from 'escape-html';
-import emojify from '../emoji';
 
 export default class DisplayName extends React.PureComponent {
 
   static propTypes = {
     account: ImmutablePropTypes.map.isRequired,
+    others: ImmutablePropTypes.list,
   };
 
   render () {
-    const displayName     = this.props.account.get('display_name').length === 0 ? this.props.account.get('username') : this.props.account.get('display_name');
-    const displayNameHTML = { __html: emojify(escapeTextContentForBrowser(displayName)) };
+    const { account, others } = this.props;
+    const displayNameHtml = { __html: account.get('display_name_html') };
+
+    let suffix;
+
+    if (others && others.size > 1) {
+      suffix = `+${others.size}`;
+    } else {
+      suffix = <span className='display-name__account'>@{account.get('acct')}</span>;
+    }
 
     return (
       <span className='display-name'>
-        <strong className='display-name__html' dangerouslySetInnerHTML={displayNameHTML} /> <span className='display-name__account'>@{this.props.account.get('acct')}</span>
+        <bdi><strong className='display-name__html' dangerouslySetInnerHTML={displayNameHtml} /></bdi> {suffix}
       </span>
     );
   }

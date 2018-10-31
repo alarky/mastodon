@@ -21,8 +21,9 @@ RSpec.describe Api::PushController, type: :controller do
           'https://callback.host/api',
           'as1234df',
           '3600',
+          nil
         )
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(202)
       end
     end
 
@@ -42,7 +43,7 @@ RSpec.describe Api::PushController, type: :controller do
           account,
           'https://callback.host/api',
         )
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(202)
       end
     end
 

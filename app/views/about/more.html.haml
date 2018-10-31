@@ -1,33 +1,47 @@
 - content_for :page_title do
   = site_hostname
 
-.wrapper.thicc
-  .sidebar-layout
-    .main
-      .panel
-        %h2= site_hostname
+- content_for :header_tags do
+  = javascript_pack_tag 'public', integrity: true, crossorigin: 'anonymous'
+  = render partial: 'shared/og'
 
-        - unless @instance_presenter.site_description.blank?
-          %p!= @instance_presenter.site_description
+.grid-3
+  .column-0
+    .public-account-header.public-account-header--no-bar
+      .public-account-header__image
+        = image_tag @instance_presenter.hero&.file&.url || @instance_presenter.thumbnail&.file&.url || asset_pack_path('preview.jpg'), alt: @instance_presenter.site_title, class: 'parallax'
 
-      .information-board
-        .section
-          %span= t 'about.user_count_before'
-          %strong= number_with_delimiter @instance_presenter.user_count
-          %span= t 'about.user_count_after'
-        .section
-          %span= t 'about.status_count_before'
-          %strong= number_with_delimiter @instance_presenter.status_count
-          %span= t 'about.status_count_after'
-        .section
-          %span= t 'about.domain_count_before'
-          %strong= number_with_delimiter @instance_presenter.domain_count
-          %span= t 'about.domain_count_after'
+  .column-1
+    .landing-page__call-to-action{ dir: 'ltr' }
+      .row
+        .row__information-board
+          .information-board__section
+            %span= t 'about.user_count_before'
+            %strong= number_with_delimiter @instance_presenter.user_count
+            %span= t 'about.user_count_after', count: @instance_presenter.user_count
+          .information-board__section
+            %span= t 'about.status_count_before'
+            %strong= number_with_delimiter @instance_presenter.status_count
+            %span= t 'about.status_count_after', count: @instance_presenter.status_count
+        .row__mascot
+          .landing-page__mascot
+            = image_tag @instance_presenter.mascot&.file&.url || asset_pack_path('elephant_ui_plane.svg'), alt: ''
 
-      - unless @instance_presenter.site_extended_description.blank?
-        .panel!= @instance_presenter.site_extended_description
+  .column-2
+    .landing-page__information.contact-widget
+      %p
+        %strong= t 'about.administered_by'
 
-    .sidebar
-      = render 'contact', contact: @instance_presenter
-      = render 'links', instance: @instance_presenter
-      = render 'version', version: @instance_presenter
+      = account_link_to(@instance_presenter.contact_account)
+
+      - if @instance_presenter.site_contact_email.present?
+        %p.contact-widget__mail
+          %strong
+            = succeed ':' do
+              = t 'about.contact'
+          %br/
+          = mail_to @instance_presenter.site_contact_email, nil, title: @instance_presenter.site_contact_email
+
+  .column-3
+    .box-widget
+      .rich-formatting= @instance_presenter.site_extended_description.html_safe.presence || t('about.extended_description_html')

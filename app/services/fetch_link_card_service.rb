@@ -1,32 +1,75 @@
 # frozen_string_literal: true
 
 class FetchLinkCardService < BaseService
-  include HttpHelper
-
-  URL_PATTERN = %r{https?://\S+}
+  URL_PATTERN = %r{
+    (                                                                                                 #   $1 URL
+      (https?:\/\/)                                                                                   #   $2 Protocol (required)
+      (#{Twitter::Regex[:valid_domain]})                                                              #   $3 Domain(s)
+      (?::(#{Twitter::Regex[:valid_port_number]}))?                                                   #   $4 Port number (optional)
+      (/#{Twitter::Regex[:valid_url_path]}*)?                                                         #   $5 URL Path and anchor
+      (\?#{Twitter::Regex[:valid_url_query_chars]}*#{Twitter::Regex[:valid_url_query_ending_chars]})? #   $6 Query String
+    )
+  }iox
 
   def call(status)
-    # Get first http/https URL that isn't local
-    url = parse_urls(status)
+    @status = status
+    @url    = parse_urls
 
-    return if url.nil?
+    return if @url.nil? || @status.preview_cards.any?
 
-    url  = url.to_s
-    card = PreviewCard.where(status: status).first_or_initialize(status: status, url: url)
-    res  = http_client.head(url)
+    @url = @url.to_s
 
-    return if res.code != 200 || res.mime_type != 'text/html'
+    RedisLock.acquire(lock_options) do |lock|
+      if lock.acquired?
+        @card = PreviewCard.find_by(url: @url)
+        process_url if @card.nil? || @card.updated_at <= 2.weeks.ago
+      else
+        raise Mastodon::RaceConditionError
+      end
+    end
 
-    attempt_opengraph(card, url) unless attempt_oembed(card, url)
+    attach_card if @card&.persisted?
+  rescue HTTP::Error, Addressable::URI::InvalidURIError, Mastodon::HostValidationError, Mastodon::LengthValidationError => e
+    Rails.logger.debug "Error fetching link #{@url}: #{e}"
+    nil
   end
 
   private
 
-  def parse_urls(status)
-    if status.local?
-      urls = status.text.match(URL_PATTERN).to_a.map { |uri| Addressable::URI.parse(uri).normalize }
+  def process_url
+    @card ||= PreviewCard.new(url: @url)
+
+    failed = Request.new(:head, @url).perform do |res|
+      res.code != 405 && res.code != 501 && (res.code != 200 || res.mime_type != 'text/html')
+    end
+
+    return if failed
+
+    Request.new(:get, @url).perform do |res|
+      if res.code == 200 && res.mime_type == 'text/html'
+        @html = res.body_with_limit
+        @html_charset = res.charset
+      else
+        @html = nil
+        @html_charset = nil
+      end
+    end
+
+    return if @html.nil?
+
+    attempt_oembed || attempt_opengraph
+  end
+
+  def attach_card
+    @status.preview_cards << @card
+    Rails.cache.delete(@status)
+  end
+
+  def parse_urls
+    if @status.local?
+      urls = @status.text.scan(URL_PATTERN).map { |array| Addressable::URI.parse(array[0]).normalize }
     else
-      html  = Nokogiri::HTML(status.text)
+      html  = Nokogiri::HTML(@status.text)
       links = html.css('a')
       urls  = links.map { |a| Addressable::URI.parse(a['href']).normalize unless skip_link?(a) }.compact
     end
@@ -39,62 +82,91 @@ class FetchLinkCardService < BaseService
     uri.host.blank? || TagManager.instance.local_url?(uri.to_s) || !%w(http https).include?(uri.scheme)
   end
 
-  def skip_link?(a)
-    # Avoid links for hashtags and mentions (microformats)
-    a['rel']&.include?('tag') || a['class']&.include?('u-url')
+  def mention_link?(a)
+    @status.mentions.any? do |mention|
+      a['href'] == TagManager.instance.url_for(mention.account)
+    end
   end
 
-  def attempt_oembed(card, url)
-    response = OEmbed::Providers.get(url)
+  def skip_link?(a)
+    # Avoid links for hashtags and mentions (microformats)
+    a['rel']&.include?('tag') || a['class']&.include?('u-url') || mention_link?(a)
+  end
 
-    card.type          = response.type
-    card.title         = response.respond_to?(:title)         ? response.title         : ''
-    card.author_name   = response.respond_to?(:author_name)   ? response.author_name   : ''
-    card.author_url    = response.respond_to?(:author_url)    ? response.author_url    : ''
-    card.provider_name = response.respond_to?(:provider_name) ? response.provider_name : ''
-    card.provider_url  = response.respond_to?(:provider_url)  ? response.provider_url  : ''
-    card.width         = 0
-    card.height        = 0
+  def attempt_oembed
+    service = FetchOEmbedService.new
+    embed   = service.call(@url, html: @html)
+    url     = Addressable::URI.parse(service.endpoint_url)
 
-    case card.type
+    return false if embed.nil?
+
+    @card.type          = embed[:type]
+    @card.title         = embed[:title]         || ''
+    @card.author_name   = embed[:author_name]   || ''
+    @card.author_url    = embed[:author_url].present? ? (url + embed[:author_url]).to_s : ''
+    @card.provider_name = embed[:provider_name] || ''
+    @card.provider_url  = embed[:provider_url].present? ? (url + embed[:provider_url]).to_s : ''
+    @card.width         = 0
+    @card.height        = 0
+
+    case @card.type
     when 'link'
-      card.image = URI.parse(response.thumbnail_url) if response.respond_to?(:thumbnail_url)
+      @card.image_remote_url = (url + embed[:thumbnail_url]).to_s if embed[:thumbnail_url].present?
     when 'photo'
-      card.url    = response.url
-      card.width  = response.width.presence  || 0
-      card.height = response.height.presence || 0
+      return false if embed[:url].blank?
+
+      @card.embed_url        = (url + embed[:url]).to_s
+      @card.image_remote_url = (url + embed[:url]).to_s
+      @card.width            = embed[:width].presence  || 0
+      @card.height           = embed[:height].presence || 0
     when 'video'
-      card.width  = response.width.presence  || 0
-      card.height = response.height.presence || 0
-      card.html   = Formatter.instance.sanitize(response.html, Sanitize::Config::MASTODON_OEMBED)
+      @card.width            = embed[:width].presence  || 0
+      @card.height           = embed[:height].presence || 0
+      @card.html             = Formatter.instance.sanitize(embed[:html], Sanitize::Config::MASTODON_OEMBED)
+      @card.image_remote_url = (url + embed[:thumbnail_url]).to_s if embed[:thumbnail_url].present?
     when 'rich'
       # Most providers rely on <script> tags, which is a no-no
       return false
     end
 
-    card.save_with_optional_image!
-  rescue OEmbed::NotFound
-    false
+    @card.save_with_optional_image!
   end
 
-  def attempt_opengraph(card, url)
-    response = http_client.get(url)
+  def attempt_opengraph
+    detector = CharlockHolmes::EncodingDetector.new
+    detector.strip_tags = true
 
-    return if response.code != 200 || response.mime_type != 'text/html'
+    guess = detector.detect(@html, @html_charset)
+    page  = Nokogiri::HTML(@html, nil, guess&.fetch(:encoding, nil))
 
-    page = Nokogiri::HTML(response.to_s)
+    if meta_property(page, 'twitter:player')
+      @card.type   = :video
+      @card.width  = meta_property(page, 'twitter:player:width') || 0
+      @card.height = meta_property(page, 'twitter:player:height') || 0
+      @card.html   = content_tag(:iframe, nil, src: meta_property(page, 'twitter:player'),
+                                               width: @card.width,
+                                               height: @card.height,
+                                               allowtransparency: 'true',
+                                               scrolling: 'no',
+                                               frameborder: '0')
+    else
+      @card.type = :link
+    end
 
-    card.type             = :link
-    card.title            = meta_property(page, 'og:title') || page.at_xpath('//title')&.content
-    card.description      = meta_property(page, 'og:description') || meta_property(page, 'description')
-    card.image_remote_url = meta_property(page, 'og:image') if meta_property(page, 'og:image')
+    @card.title            = meta_property(page, 'og:title').presence || page.at_xpath('//title')&.content || ''
+    @card.description      = meta_property(page, 'og:description').presence || meta_property(page, 'description') || ''
+    @card.image_remote_url = (Addressable::URI.parse(@url) + meta_property(page, 'og:image')).to_s if meta_property(page, 'og:image')
 
-    return if card.title.blank?
+    return if @card.title.blank? && @card.html.blank?
 
-    card.save_with_optional_image!
+    @card.save_with_optional_image!
   end
 
-  def meta_property(html, property)
-    html.at_xpath("//meta[@property=\"#{property}\"]")&.attribute('content')&.value || html.at_xpath("//meta[@name=\"#{property}\"]")&.attribute('content')&.value
+  def meta_property(page, property)
+    page.at_xpath("//meta[@property=\"#{property}\"]")&.attribute('content')&.value || page.at_xpath("//meta[@name=\"#{property}\"]")&.attribute('content')&.value
+  end
+
+  def lock_options
+    { redis: Redis.current, key: "fetch:#{@url}" }
   end
 end

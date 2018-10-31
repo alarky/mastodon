@@ -4,7 +4,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
   render_views
 
   let(:user)  { Fabricate(:user, account: Fabricate(:account, username: 'alice')) }
-  let(:token) { double acceptable?: true, resource_owner_id: user.id }
+  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write:media') }
 
   before do
     allow(controller).to receive(:doorkeeper_token) { token }
@@ -30,7 +30,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
         end
 
         it 'returns http 422' do
-          expect(response).to have_http_status(:error)
+          expect(response).to have_http_status(500)
         end
       end
     end
@@ -41,7 +41,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       it 'returns http success' do
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
       end
 
       it 'creates a media attachment' do
@@ -53,7 +53,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       it 'returns media ID in JSON' do
-        expect(body_as_json[:id]).to eq MediaAttachment.first.id
+        expect(body_as_json[:id]).to eq MediaAttachment.first.id.to_s
       end
     end
 
@@ -63,7 +63,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       it 'returns http success' do
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
       end
 
       it 'creates a media attachment' do
@@ -75,7 +75,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       it 'returns media ID in JSON' do
-        expect(body_as_json[:id]).to eq MediaAttachment.first.id
+        expect(body_as_json[:id]).to eq MediaAttachment.first.id.to_s
       end
     end
 
@@ -85,7 +85,7 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       xit 'returns http success' do
-        expect(response).to have_http_status(:success)
+        expect(response).to have_http_status(200)
       end
 
       xit 'creates a media attachment' do
@@ -97,7 +97,36 @@ RSpec.describe Api::V1::MediaController, type: :controller do
       end
 
       xit 'returns media ID in JSON' do
-        expect(body_as_json[:id]).to eq MediaAttachment.first.id
+        expect(body_as_json[:id]).to eq MediaAttachment.first.id.to_s
+      end
+    end
+  end
+
+  describe 'PUT #update' do
+    context 'when somebody else\'s' do
+      let(:media) { Fabricate(:media_attachment, status: nil) }
+
+      it 'returns http not found' do
+        put :update, params: { id: media.id, description: 'Lorem ipsum!!!' }
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context 'when not attached to a status' do
+      let(:media) { Fabricate(:media_attachment, status: nil, account: user.account) }
+
+      it 'updates the description' do
+        put :update, params: { id: media.id, description: 'Lorem ipsum!!!' }
+        expect(media.reload.description).to eq 'Lorem ipsum!!!'
+      end
+    end
+
+    context 'when attached to a status' do
+      let(:media) { Fabricate(:media_attachment, status: Fabricate(:status), account: user.account) }
+
+      it 'returns http not found' do
+        put :update, params: { id: media.id, description: 'Lorem ipsum!!!' }
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

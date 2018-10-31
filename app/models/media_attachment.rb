@@ -3,19 +3,20 @@
 #
 # Table name: media_attachments
 #
-#  id                :integer          not null, primary key
-#  status_id         :integer
+#  id                :bigint(8)        not null, primary key
+#  status_id         :bigint(8)
 #  file_file_name    :string
 #  file_content_type :string
 #  file_file_size    :integer
 #  file_updated_at   :datetime
 #  remote_url        :string           default(""), not null
-#  account_id        :integer
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  shortcode         :string
 #  type              :integer          default("image"), not null
 #  file_meta         :json
+#  account_id        :bigint(8)
+#  description       :text
 #
 
 class MediaAttachment < ApplicationRecord
@@ -23,10 +24,25 @@ class MediaAttachment < ApplicationRecord
 
   enum type: [:image, :gifv, :video, :unknown]
 
-  IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'].freeze
-  VIDEO_MIME_TYPES = ['video/webm', 'video/mp4'].freeze
+  IMAGE_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif'].freeze
+  VIDEO_FILE_EXTENSIONS = ['.webm', '.mp4', '.m4v', '.mov'].freeze
 
-  IMAGE_STYLES = { original: '1280x1280>', small: '400x400>' }.freeze
+  IMAGE_MIME_TYPES             = ['image/jpeg', 'image/png', 'image/gif'].freeze
+  VIDEO_MIME_TYPES             = ['video/webm', 'video/mp4', 'video/quicktime'].freeze
+  VIDEO_CONVERTIBLE_MIME_TYPES = ['video/webm', 'video/quicktime'].freeze
+
+  IMAGE_STYLES = {
+    original: {
+      pixels: 1_638_400, # 1280x1280px
+      file_geometry_parser: FastGeometryParser,
+    },
+
+    small: {
+      pixels: 160_000, # 400x400px
+      file_geometry_parser: FastGeometryParser,
+    },
+  }.freeze
+
   VIDEO_STYLES = {
     small: {
       convert_options: {
@@ -39,34 +55,83 @@ class MediaAttachment < ApplicationRecord
     },
   }.freeze
 
-  belongs_to :account, inverse_of: :media_attachments
-  belongs_to :status,  inverse_of: :media_attachments
+  VIDEO_FORMAT = {
+    format: 'mp4',
+    convert_options: {
+      output: {
+        'movflags' => 'faststart',
+        'pix_fmt'  => 'yuv420p',
+        'vf'       => 'scale=\'trunc(iw/2)*2:trunc(ih/2)*2\'',
+        'vsync'    => 'cfr',
+        'c:v'      => 'h264',
+        'b:v'      => '500K',
+        'maxrate'  => '1300K',
+        'bufsize'  => '1300K',
+        'crf'      => 18,
+      },
+    },
+  }.freeze
+
+  IMAGE_LIMIT = 8.megabytes
+  VIDEO_LIMIT = 40.megabytes
+
+  belongs_to :account, inverse_of: :media_attachments, optional: true
+  belongs_to :status,  inverse_of: :media_attachments, optional: true
 
   has_attached_file :file,
                     styles: ->(f) { file_styles f },
                     processors: ->(f) { file_processors f },
                     convert_options: { all: '-quality 90 -strip' }
 
-  include Remotable
-
   validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES
-  validates_attachment_size :file, less_than: 8.megabytes
+  validates_attachment_size :file, less_than: IMAGE_LIMIT, unless: :video?
+  validates_attachment_size :file, less_than: VIDEO_LIMIT, if: :video?
+  remotable_attachment :file, VIDEO_LIMIT
+
+  include Attachmentable
 
   validates :account, presence: true
+  validates :description, length: { maximum: 420 }, if: :local?
 
-  scope :attached, -> { where.not(status_id: nil) }
+  scope :attached,   -> { where.not(status_id: nil) }
   scope :unattached, -> { where(status_id: nil) }
-  scope :local, -> { where(remote_url: '') }
+  scope :local,      -> { where(remote_url: '') }
+  scope :remote,     -> { where.not(remote_url: '') }
+
   default_scope { order(id: :asc) }
 
   def local?
     remote_url.blank?
   end
 
+  def needs_redownload?
+    file.blank? && remote_url.present?
+  end
+
   def to_param
     shortcode
   end
 
+  def focus=(point)
+    return if point.blank?
+
+    x, y = (point.is_a?(Enumerable) ? point : point.split(',')).map(&:to_f)
+
+    meta = file.instance_read(:meta) || {}
+    meta['focus'] = { 'x' => x, 'y' => y }
+
+    file.instance_write(:meta, meta)
+  end
+
+  def focus
+    x = file.meta['focus']['x']
+    y = file.meta['focus']['y']
+
+    "#{x},#{y}"
+  end
+
+  after_commit :reset_parent_cache, on: :update
+  before_create :prepare_description, unless: :local?
   before_create :set_shortcode
   before_post_process :set_type_and_extension
   before_save :set_meta
@@ -78,24 +143,15 @@ class MediaAttachment < ApplicationRecord
       if f.instance.file_content_type == 'image/gif'
         {
           small: IMAGE_STYLES[:small],
-          original: {
-            format: 'mp4',
-            convert_options: {
-              output: {
-                'movflags' => 'faststart',
-                'pix_fmt'  => 'yuv420p',
-                'vf'       => 'scale=\'trunc(iw/2)*2:trunc(ih/2)*2\'',
-                'vsync'    => 'cfr',
-                'b:v'      => '1300K',
-                'maxrate'  => '500K',
-                'bufsize'  => '1300K',
-                'crf'      => 18,
-              },
-            },
-          },
+          original: VIDEO_FORMAT,
         }
       elsif IMAGE_MIME_TYPES.include? f.instance.file_content_type
         IMAGE_STYLES
+      elsif VIDEO_CONVERTIBLE_MIME_TYPES.include?(f.instance.file_content_type)
+        {
+          small: VIDEO_STYLES[:small],
+          original: VIDEO_FORMAT,
+        }
       else
         VIDEO_STYLES
       end
@@ -107,7 +163,7 @@ class MediaAttachment < ApplicationRecord
       elsif VIDEO_MIME_TYPES.include? f.file_content_type
         [:video_transcoder]
       else
-        [:thumbnail]
+        [:lazy_thumbnail]
       end
     end
   end
@@ -125,11 +181,12 @@ class MediaAttachment < ApplicationRecord
     end
   end
 
+  def prepare_description
+    self.description = description.strip[0...420] unless description.nil?
+  end
+
   def set_type_and_extension
     self.type = VIDEO_MIME_TYPES.include?(file_content_type) ? :video : :image
-    extension = appropriate_extension
-    basename  = Paperclip::Interpolations.basename(file, :original)
-    file.instance_write :file_name, [basename, extension].delete_if(&:blank?).join('.')
   end
 
   def set_meta
@@ -139,29 +196,44 @@ class MediaAttachment < ApplicationRecord
   end
 
   def populate_meta
-    meta = {}
+    meta = file.instance_read(:meta) || {}
+
     file.queued_for_write.each do |style, file|
-      begin
-        geo = Paperclip::Geometry.from_file file
-        meta[style] = {
-          width: geo.width.to_i,
-          height: geo.height.to_i,
-          size: "#{geo.width.to_i}x#{geo.height.to_i}",
-          aspect: geo.width.to_f / geo.height.to_f,
-        }
-      rescue Paperclip::Errors::NotIdentifiedByImageMagickError
-        meta[style] = {}
-      end
+      meta[style] = style == :small || image? ? image_geometry(file) : video_metadata(file)
     end
+
     meta
   end
 
-  def appropriate_extension
-    mime_type = MIME::Types[file.content_type]
+  def image_geometry(file)
+    width, height = FastImage.size(file.path)
 
-    extensions_for_mime_type = mime_type.empty? ? [] : mime_type.first.extensions
-    original_extension       = Paperclip::Interpolations.extension(file, :original)
+    return {} if width.nil?
 
-    extensions_for_mime_type.include?(original_extension) ? original_extension : extensions_for_mime_type.first
+    {
+      width:  width,
+      height: height,
+      size: "#{width}x#{height}",
+      aspect: width.to_f / height.to_f,
+    }
+  end
+
+  def video_metadata(file)
+    movie = FFMPEG::Movie.new(file.path)
+
+    return {} unless movie.valid?
+
+    {
+      width: movie.width,
+      height: movie.height,
+      frame_rate: movie.frame_rate,
+      duration: movie.duration,
+      bitrate: movie.bitrate,
+    }
+  end
+
+  def reset_parent_cache
+    return if status_id.nil?
+    Rails.cache.delete("statuses/#{status_id}")
   end
 end

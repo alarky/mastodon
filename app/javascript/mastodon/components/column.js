@@ -1,11 +1,13 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import scrollTop from '../scroll';
+import detectPassiveEvents from 'detect-passive-events';
+import { scrollTop } from '../scroll';
 
 export default class Column extends React.PureComponent {
 
   static propTypes = {
     children: PropTypes.node,
+    label: PropTypes.string,
   };
 
   scrollTop () {
@@ -30,11 +32,19 @@ export default class Column extends React.PureComponent {
     this.node = c;
   }
 
+  componentDidMount () {
+    this.node.addEventListener('wheel', this.handleWheel,  detectPassiveEvents.hasSupport ? { passive: true } : false);
+  }
+
+  componentWillUnmount () {
+    this.node.removeEventListener('wheel', this.handleWheel);
+  }
+
   render () {
-    const { children } = this.props;
+    const { label, children } = this.props;
 
     return (
-      <div role='region' className='column' ref={this.setRef} onWheel={this.handleWheel}>
+      <div role='region' aria-label={label} className='column' ref={this.setRef}>
         {children}
       </div>
     );

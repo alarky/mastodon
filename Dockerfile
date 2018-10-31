@@ -1,22 +1,36 @@
-FROM ruby:2.4.1-alpine
+FROM node:8.12.0-alpine as node
+FROM ruby:2.4.5-alpine3.8
 
 LABEL maintainer="https://github.com/tootsuite/mastodon" \
-      description="A GNU Social-compatible microblogging server"
+      description="Your self-hosted, globally interconnected microblogging community"
 
-ENV UID=991 GID=991 \
+ARG UID=991
+ARG GID=991
+
+ENV PATH=/mastodon/bin:$PATH \
     RAILS_SERVE_STATIC_FILES=true \
-    RAILS_ENV=production NODE_ENV=production
+    RAILS_ENV=production \
+    NODE_ENV=production
+
+ARG LIBICONV_VERSION=1.15
+ARG LIBICONV_DOWNLOAD_SHA256=ccf536620a45458d26ba83887a983b96827001e92a13847b45e4925cc8913178
 
 EXPOSE 3000 4000
 
 WORKDIR /mastodon
 
-RUN echo "@edge https://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
- && apk -U upgrade \
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=node /opt/yarn-* /opt/yarn
+
+RUN apk -U upgrade \
  && apk add -t build-dependencies \
     build-base \
-    libxml2-dev \
-    libxslt-dev \
+    icu-dev \
+    libidn-dev \
+    libressl \
+    libtool \
     postgresql-dev \
     protobuf-dev \
     python \
@@ -25,30 +39,48 @@ RUN echo "@edge https://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/reposit
     ffmpeg \
     file \
     git \
-    imagemagick@edge \
+    icu-libs \
+    imagemagick \
+    libidn \
     libpq \
-    libxml2 \
-    libxslt \
-    nodejs-npm@edge \
-    nodejs@edge \
     protobuf \
-    su-exec \
     tini \
- && npm install -g npm@3 && npm install -g yarn \
+    tzdata \
  && update-ca-certificates \
+ && ln -s /opt/yarn/bin/yarn /usr/local/bin/yarn \
+ && ln -s /opt/yarn/bin/yarnpkg /usr/local/bin/yarnpkg \
+ && mkdir -p /tmp/src /opt \
+ && wget -O libiconv.tar.gz "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-$LIBICONV_VERSION.tar.gz" \
+ && echo "$LIBICONV_DOWNLOAD_SHA256 *libiconv.tar.gz" | sha256sum -c - \
+ && tar -xzf libiconv.tar.gz -C /tmp/src \
+ && rm libiconv.tar.gz \
+ && cd /tmp/src/libiconv-$LIBICONV_VERSION \
+ && ./configure --prefix=/usr/local \
+ && make -j$(getconf _NPROCESSORS_ONLN)\
+ && make install \
+ && libtool --finish /usr/local/lib \
+ && cd /mastodon \
  && rm -rf /tmp/* /var/cache/apk/*
 
-COPY Gemfile Gemfile.lock package.json yarn.lock /mastodon/
+COPY Gemfile Gemfile.lock package.json yarn.lock .yarnclean /mastodon/
 
-RUN bundle install --deployment --without test development \
- && yarn --ignore-optional --pure-lockfile
+RUN bundle config build.nokogiri --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
+ && bundle install -j$(getconf _NPROCESSORS_ONLN) --deployment --without test development \
+ && yarn install --pure-lockfile --ignore-engines \
+ && yarn cache clean
+
+RUN addgroup -g ${GID} mastodon && adduser -h /mastodon -s /bin/sh -D -G mastodon -u ${UID} mastodon \
+ && mkdir -p /mastodon/public/system /mastodon/public/assets /mastodon/public/packs \
+ && chown -R mastodon:mastodon /mastodon/public
 
 COPY . /mastodon
 
-COPY docker_entrypoint.sh /usr/local/bin/run
+RUN chown -R mastodon:mastodon /mastodon
 
-RUN chmod +x /usr/local/bin/run
+VOLUME /mastodon/public/system
 
-VOLUME /mastodon/public/system /mastodon/public/assets /mastodon/public/packs
+USER mastodon
 
-ENTRYPOINT ["/usr/local/bin/run"]
+RUN OTP_SECRET=precompile_placeholder SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:precompile
+
+ENTRYPOINT ["/sbin/tini", "--"]

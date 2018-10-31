@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::FavouritesController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :read }
+  before_action -> { doorkeeper_authorize! :read, :'read:favourites' }
   before_action :require_user!
   after_action :insert_pagination_headers
 
@@ -9,30 +9,26 @@ class Api::V1::FavouritesController < Api::BaseController
 
   def index
     @statuses = load_statuses
+    render json: @statuses, each_serializer: REST::StatusSerializer, relationships: StatusRelationshipsPresenter.new(@statuses, current_user&.account_id)
   end
 
   private
 
   def load_statuses
-    cached_favourites.tap do |statuses|
-      set_maps(statuses)
-    end
+    cached_favourites
   end
 
   def cached_favourites
     cache_collection(
-      Status.where(
-        id: results.map(&:status_id)
-      ),
+      Status.reorder(nil).joins(:favourites).merge(results),
       Status
     )
   end
 
   def results
-    @_results ||= account_favourites.paginate_by_max_id(
+    @_results ||= account_favourites.paginate_by_id(
       limit_param(DEFAULT_STATUSES_LIMIT),
-      params[:max_id],
-      params[:since_id]
+      params_slice(:max_id, :since_id, :min_id)
     )
   end
 
@@ -52,7 +48,7 @@ class Api::V1::FavouritesController < Api::BaseController
 
   def prev_path
     unless results.empty?
-      api_v1_favourites_url pagination_params(since_id: pagination_since_id)
+      api_v1_favourites_url pagination_params(min_id: pagination_since_id)
     end
   end
 
@@ -69,6 +65,6 @@ class Api::V1::FavouritesController < Api::BaseController
   end
 
   def pagination_params(core_params)
-    params.permit(:limit).merge(core_params)
+    params.slice(:limit).permit(:limit).merge(core_params)
   end
 end

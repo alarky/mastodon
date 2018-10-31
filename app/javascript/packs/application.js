@@ -1,6 +1,10 @@
-import main from '../mastodon/main';
 import loadPolyfills from '../mastodon/load_polyfills';
+import { start } from '../mastodon/common';
 
-loadPolyfills().then(main).catch(e => {
+start();
+
+loadPolyfills().then(() => {
+  require('../mastodon/main').default();
+}).catch(e => {
   console.error(e);
 });

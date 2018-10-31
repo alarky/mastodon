@@ -1,35 +1,16 @@
 ---
 th:
   about:
-    about_mastodon: แมสโทดอน เป็น  <em>ดีเซ็นทรัลไลซ์</em><em>ฟรีโอเพ่นซอร์ส</em> โซเชี่ยวเน็ตเวริ์ค.  เป็นทางเลือกทดแทนโซเชี่ยวเน็ตเวิร์คที่ทำเป็นธุรกิจการค้า, ป้องกันการผูกขาดช่องทางการสื่อสารของคุณ. เลือกเซร์ฟเวอร์ที่คุณไว้ใจ &mdash; ที่คุณเลือกได้เอง, สื่อสารกับคนที่คุณต้องการได้เสมอ. ใครๆก็รันแมสโทดอนอินซะแตนซ์ได้ และ เชื่อมต่อกับ<em>โซเชี่ยวเน็ตเวิร์ค</em> โดยไม่มีอะไรมาขวางกั้น.
+    about_mastodon_html: แมสโทดอน เป็น  <em>ดีเซ็นทรัลไลซ์</em><em>ฟรีโอเพ่นซอร์ส</em> โซเชี่ยวเน็ตเวริ์ค.  เป็นทางเลือกทดแทนโซเชี่ยวเน็ตเวิร์คที่ทำเป็นธุรกิจการค้า, ป้องกันการผูกขาดช่องทางการสื่อสารของคุณ. เลือกเซร์ฟเวอร์ที่คุณไว้ใจ &mdash; ที่คุณเลือกได้เอง, สื่อสารกับคนที่คุณต้องการได้เสมอ. ใครๆก็รันแมสโทดอนอินซะแตนซ์ได้ และ เชื่อมต่อกับ<em>โซเชี่ยวเน็ตเวิร์ค</em> โดยไม่มีอะไรมาขวางกั้น.
     about_this: เกี่ยวกับอินซะแตนซ์นี้
-    apps: แอ๊ฟ
-    business_email: 'อีเมล์ธุรกิจ:'
     closed_registrations: อินซะแตนซ์นี้ปิดรับลงทะเบียนแล้ว.
     contact: ติดต่อ
-    description_headline: โดเมนคือ %{domain} ?
-    domain_count_after: อินซะแตนซ์อื่นๆ
-    domain_count_before: เชื่อมต่อกับ
-    features:
-      api: API เปิดสำหรับ Apps และ Services
-      blocks: มีเครื่องมือสำหรับ Block และ Mute
-      characters: เขียนได้ 500 ตัวอักษรต่อโพสต์
-      chronology: Timelines are chronological
-      ethics: 'ออกแบบด้วยจรรยาบรรณ: ไม่มีโฆษณา, ไม่มีการแทรค'
-      gifv: รองรับภาพ GIFV และ วีดีโอสั้น
-      privacy: Granular, per-post privacy settings
-      public: ไทม์ไลน์สาธารณะ
-    features_headline: What sets Mastodon apart
-    get_started: เริ่มกันเลย
-    links: ลิงก์
     other_instances: อินซะแตนซ์อื่นๆ
     source_code: ซอร์สโค๊ด
     status_count_after: สถานะ
     status_count_before: Who authored
-    terms: เงื่อนไข
     user_count_after: ผู้ใช้
     user_count_before: Home to
-    version: เวอร์ชั่น
   accounts:
     follow: ติดตาม
     followers: ผู้ติดตาม
@@ -38,27 +19,19 @@ th:
     people_followed_by: ถูกติดตามโดย %{name}
     people_who_follow: คนที่ติดตาม %{name}
     posts: โพสต์
-    remote_follow: Remote follow
     unfollow: เลิกติดตาม
-  activitypub:
-    activity:
-      announce:
-        name: "%{account_name} แชร์กิจกรรม."
-      create:
-        name: "%{account_name} สร้างโน๊ต."
-    outbox:
-      name: "%{account_name}'s Outbox"
-      summary: รวมกิจกรรมของผู้ใช้ %{account_name}.
   admin:
     accounts:
       are_you_sure: แน่ใจนะ?
       confirm: ยืนยัน
       confirmed: ยึนยันแล้ว
+      confirming: ยืนยัน
       disable_two_factor_authentication: Disable 2FA
       display_name: ชื่อสำหรับดีสเพล
       domain: โดแมน
       edit: แก้ไข
       email: อีเมล์
+      email_status: สถานะอีเมล
       feed_url: Feed URL
       followers: ผู้ติดตาม
       follows: ติดตาม
@@ -84,6 +57,10 @@ th:
       profile_url: Profile URL
       public: สาธารณะ
       push_subscription_expires: PuSH subscription expires
+      resend_confirmation:
+        already_confirmed: ผู้ใช้รายนี้ได้รับการยืนยันแล้ว
+        send: ส่งอีเมลยืนยันอีกครั้ง
+        success: ยืนยันอีเมลเรียบร้อยแล้ว!
       reset_password: รีเซ็ตรหัสผ่าน
       salmon_url: Salmon URL
       show:
@@ -133,37 +110,25 @@ th:
       title: Known Instances
     reports:
       comment:
-        label: คอมเม้นต์
         none: None
-      delete: ลบ
-      id: ไอดี
       mark_as_resolved: ทำเครื่องหมายว่าจัดการแล้ว
       report: 'Report #%{id}'
-      report_contents: เนื้อหา
       reported_account: รายงานแอคเคาท์
       reported_by: รายงานโดย
       resolved: จัดการแล้ว
-      silence_account: แอคเค๊าท์ที่ปิดเสียง
       status: สถานะ
-      suspend_account: แอคเค๊าท์ที่หยุดไว้
-      target: เป้าหมาย
       title: รายงาน
       unresolved: Unresolved
-      view: วิว
     settings:
       contact_information:
         email: กรอกที่อยู่อีเมล์สาธารณะ
-        label: ข้อมูลที่ติดต่อ
         username: กรอกชื่อผู้ใช้
       registrations:
         closed_message:
           desc_html: Displayed on frontpage when registrations are closed<br> ใช้ HTML tags ได้
           title: ปิดข้อความลงทะเบียน
         open:
-          disabled: ปิดการใช้งาน
-          enabled: ปิดใช้งาน
           title: เปิดรับลงทะเบียน
-      setting: ตั้งค่า
       site_description:
         desc_html: Displayed as a paragraph on the frontpage and used as a meta tag.<br> ใช้ HTML tags ได้, in particular <code>&lt;a&gt;</code> และ <code>&lt;em&gt;</code>.
         title: คำอธิบายไซต์
@@ -177,17 +142,15 @@ th:
       confirmed: ยืนยัน
       expires_in: หมดอายุภายใน
       last_delivery: จัดส่งครั้งล่าสุด
-      title: PubSubHubbub
+      title: WebSub
       topic: ชื่อเรื่อง
     title: แอดมิน
   application_mailer:
     settings: 'เปลี่ยนอีเมล์ preferences: %{link}'
-    signature: ฟอร์มการแจ้งเตือนแมสโทดอน %{instance}
     view: 'วิว:'
   applications:
     invalid_url: URL ที่ระบุไม่ถูกตั้ง
   auth:
-    change_password: Credentials
     didnt_get_confirmation: Didn't receive confirmation instructions?
     forgot_password: คุณลืมพาสเวริ์ดใช่ัม้ย?
     login: ล๊อคอิน
@@ -195,11 +158,11 @@ th:
     register: สมัคร
     resend_confirmation: ส่งขั้นตอนวิธีการยืนยันใหม่อีกครั้ง
     reset_password: เปลี่ยนรหัสผ่าน
+    security: Credentials
     set_new_password: ตั้งรหัสผ่านใหม่
   authorize_follow:
     error: Unfortunately, there was an error looking up the remote account
     follow: ติดตาม
-    prompt_html: 'คุณ (<strong>%{self}</strong>) ขอติดตาม:'
     title: ติดตาม %{acct}
   datetime:
     distance_in_words:
@@ -243,7 +206,6 @@ th:
     unlocked_warning_title: แอคเค๊าท์ของคุณไม่ได้ล๊อค
   generic:
     changes_saved_msg: บันทึกการแก้ไขแล้ว!
-    powered_by: powered by %{link}
     save_changes: บันทึกการเปลี่ยนแปลง
     validation_errors:
       one: Something isn't quite right yet! Please review the error below
@@ -256,15 +218,13 @@ th:
       following: Following list
       muting: Muting list
     upload: Upload
-  landing_strip_html: "<strong>%{name}</strong> is a user on %{link_to_root_path}. You can follow them or interact with them if you have an account anywhere in the fediverse."
-  landing_strip_signup_html: If you don't, you can <a href="%{sign_up_path}">sign up here</a>.
   media_attachments:
     validations:
       images_and_video: Cannot attach a video to a status that already contains images
       too_many: แนบมากกว่า 4 ไฟล์ไม่ได้
   notification_mailer:
     digest:
-      body: 'Here is a brief summary of what you missed on %{instance} since your last visit on %{since}:'
+      body: Here is a brief summary of the messages you missed since your last visit on %{since}
       mention: "%{name} ส่งข้อความถึงคุณ:"
       new_followers_summary:
         one: ยินดีด้วยคุณได้ผู้ติดตามคนใหม่! Yay!
@@ -287,6 +247,17 @@ th:
     reblog:
       body: 'Your status was boosted by %{name}:'
       subject: "%{name} boosted your status"
+  number:
+    human:
+      decimal_units:
+        format: "%n%u"
+        units:
+          billion: B
+          million: M
+          quadrillion: Q
+          thousand: K
+          trillion: T
+          unit: ''
   pagination:
     next: ต่อไป
     prev: ย้อนกลับ
@@ -318,7 +289,6 @@ th:
       unlisted: Unlisted
       unlisted_long: Everyone can see, but not listed on public timelines
   stream_entries:
-    click_to_show: คลิกเพื่อแสดง
     reblogged: boosted
     sensitive_content: Sensitive content
   time:

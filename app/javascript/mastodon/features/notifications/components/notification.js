@@ -1,79 +1,161 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import StatusContainer from '../../../containers/status_container';
 import AccountContainer from '../../../containers/account_container';
-import { FormattedMessage } from 'react-intl';
+import { injectIntl, FormattedMessage } from 'react-intl';
 import Permalink from '../../../components/permalink';
-import emojify from '../../../emoji';
-import escapeTextContentForBrowser from 'escape-html';
 import ImmutablePureComponent from 'react-immutable-pure-component';
+import { HotKeys } from 'react-hotkeys';
 
-export default class Notification extends ImmutablePureComponent {
+const notificationForScreenReader = (intl, message, timestamp) => {
+  const output = [message];
+
+  output.push(intl.formatDate(timestamp, { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }));
+
+  return output.join(', ');
+};
+
+export default @injectIntl
+class Notification extends ImmutablePureComponent {
+
+  static contextTypes = {
+    router: PropTypes.object,
+  };
 
   static propTypes = {
     notification: ImmutablePropTypes.map.isRequired,
+    hidden: PropTypes.bool,
+    onMoveUp: PropTypes.func.isRequired,
+    onMoveDown: PropTypes.func.isRequired,
+    onMention: PropTypes.func.isRequired,
+    intl: PropTypes.object.isRequired,
   };
 
-  renderFollow (account, link) {
+  handleMoveUp = () => {
+    const { notification, onMoveUp } = this.props;
+    onMoveUp(notification.get('id'));
+  }
+
+  handleMoveDown = () => {
+    const { notification, onMoveDown } = this.props;
+    onMoveDown(notification.get('id'));
+  }
+
+  handleOpen = () => {
+    const { notification } = this.props;
+
+    if (notification.get('status')) {
+      this.context.router.history.push(`/statuses/${notification.get('status')}`);
+    } else {
+      this.handleOpenProfile();
+    }
+  }
+
+  handleOpenProfile = () => {
+    const { notification } = this.props;
+    this.context.router.history.push(`/accounts/${notification.getIn(['account', 'id'])}`);
+  }
+
+  handleMention = e => {
+    e.preventDefault();
+
+    const { notification, onMention } = this.props;
+    onMention(notification.get('account'), this.context.router.history);
+  }
+
+  getHandlers () {
+    return {
+      moveUp: this.handleMoveUp,
+      moveDown: this.handleMoveDown,
+      open: this.handleOpen,
+      openProfile: this.handleOpenProfile,
+      mention: this.handleMention,
+      reply: this.handleMention,
+    };
+  }
+
+  renderFollow (notification, account, link) {
+    const { intl } = this.props;
+
     return (
-      <div className='notification notification-follow'>
-        <div className='notification__message'>
-          <div className='notification__favourite-icon-wrapper'>
-            <i className='fa fa-fw fa-user-plus' />
+      <HotKeys handlers={this.getHandlers()}>
+        <div className='notification notification-follow focusable' tabIndex='0' aria-label={notificationForScreenReader(intl, intl.formatMessage({ id: 'notification.follow', defaultMessage: '{name} followed you' }, { name: account.get('acct') }), notification.get('created_at'))}>
+          <div className='notification__message'>
+            <div className='notification__favourite-icon-wrapper'>
+              <i className='fa fa-fw fa-user-plus' />
+            </div>
+            <span title={notification.get('created_at')}>
+              <FormattedMessage id='notification.follow' defaultMessage='{name} followed you' values={{ name: link }} />
+            </span>
           </div>
 
-          <FormattedMessage id='notification.follow' defaultMessage='{name} followed you' values={{ name: link }} />
+          <AccountContainer id={account.get('id')} withNote={false} hidden={this.props.hidden} />
         </div>
-
-        <AccountContainer id={account.get('id')} withNote={false} />
-      </div>
+      </HotKeys>
     );
   }
 
   renderMention (notification) {
-    return <StatusContainer id={notification.get('status')} withDismiss />;
+    return (
+      <StatusContainer
+        id={notification.get('status')}
+        withDismiss
+        hidden={this.props.hidden}
+        onMoveDown={this.handleMoveDown}
+        onMoveUp={this.handleMoveUp}
+        contextType='notifications'
+      />
+    );
   }
 
   renderFavourite (notification, link) {
-    return (
-      <div className='notification notification-favourite'>
-        <div className='notification__message'>
-          <div className='notification__favourite-icon-wrapper'>
-            <i className='fa fa-fw fa-star star-icon' />
-          </div>
-          <FormattedMessage id='notification.favourite' defaultMessage='{name} favourited your status' values={{ name: link }} />
-        </div>
+    const { intl } = this.props;
 
-        <StatusContainer id={notification.get('status')} account={notification.get('account')} muted withDismiss />
-      </div>
+    return (
+      <HotKeys handlers={this.getHandlers()}>
+        <div className='notification notification-favourite focusable' tabIndex='0' aria-label={notificationForScreenReader(intl, intl.formatMessage({ id: 'notification.favourite', defaultMessage: '{name} favourited your status' }, { name: notification.getIn(['account', 'acct']) }), notification.get('created_at'))}>
+          <div className='notification__message'>
+            <div className='notification__favourite-icon-wrapper'>
+              <i className='fa fa-fw fa-star star-icon' />
+            </div>
+            <FormattedMessage id='notification.favourite' defaultMessage='{name} favourited your status' values={{ name: link }} />
+          </div>
+
+          <StatusContainer id={notification.get('status')} account={notification.get('account')} muted withDismiss hidden={!!this.props.hidden} />
+        </div>
+      </HotKeys>
     );
   }
 
   renderReblog (notification, link) {
-    return (
-      <div className='notification notification-reblog'>
-        <div className='notification__message'>
-          <div className='notification__favourite-icon-wrapper'>
-            <i className='fa fa-fw fa-retweet' />
-          </div>
-          <FormattedMessage id='notification.reblog' defaultMessage='{name} boosted your status' values={{ name: link }} />
-        </div>
+    const { intl } = this.props;
 
-        <StatusContainer id={notification.get('status')} account={notification.get('account')} muted withDismiss />
-      </div>
+    return (
+      <HotKeys handlers={this.getHandlers()}>
+        <div className='notification notification-reblog focusable' tabIndex='0' aria-label={notificationForScreenReader(intl, intl.formatMessage({ id: 'notification.reblog', defaultMessage: '{name} boosted your status' }, { name: notification.getIn(['account', 'acct']) }), notification.get('created_at'))}>
+          <div className='notification__message'>
+            <div className='notification__favourite-icon-wrapper'>
+              <i className='fa fa-fw fa-retweet' />
+            </div>
+            <FormattedMessage id='notification.reblog' defaultMessage='{name} boosted your status' values={{ name: link }} />
+          </div>
+
+          <StatusContainer id={notification.get('status')} account={notification.get('account')} muted withDismiss hidden={this.props.hidden} />
+        </div>
+      </HotKeys>
     );
   }
 
   render () {
     const { notification } = this.props;
     const account          = notification.get('account');
-    const displayName      = account.get('display_name').length > 0 ? account.get('display_name') : account.get('username');
-    const displayNameHTML  = { __html: emojify(escapeTextContentForBrowser(displayName)) };
-    const link             = <Permalink className='notification__display-name' href={account.get('url')} title={account.get('acct')} to={`/accounts/${account.get('id')}`} dangerouslySetInnerHTML={displayNameHTML} />;
+    const displayNameHtml  = { __html: account.get('display_name_html') };
+    const link             = <bdi><Permalink className='notification__display-name' href={account.get('url')} title={account.get('acct')} to={`/accounts/${account.get('id')}`} dangerouslySetInnerHTML={displayNameHtml} /></bdi>;
 
     switch(notification.get('type')) {
     case 'follow':
-      return this.renderFollow(account, link);
+      return this.renderFollow(notification, account, link);
     case 'mention':
       return this.renderMention(notification);
     case 'favourite':
